@@ -1,0 +1,260 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "PsySummarise Extraction Schema",
+  "type": "object",
+  "required": [
+    "patient_id",
+    "doc_id",
+    "admissions",
+    "diagnoses",
+    "medications"
+  ],
+  "properties": {
+    "patient_id": {
+      "type": "string"
+    },
+    "doc_id": {
+      "type": "string"
+    },
+    "admissions": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": [
+          "event_seq",
+          "event_type",
+          "event_date",
+          "legal_status",
+          "certainty"
+        ],
+        "properties": {
+          "event_seq": {
+            "type": "integer",
+            "minimum": 1
+          },
+          "event_type": {
+            "type": "string",
+            "enum": [
+              "admission",
+              "section_change",
+              "discharge"
+            ]
+          },
+          "event_date": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "pattern": "^\\d{4}-\\d{2}-\\d{2}$"
+          },
+          "legal_status": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "enum": [
+              "Informal",
+              "Section 2",
+              "Section 3",
+              "CTO",
+              "Other",
+              null
+            ]
+          },
+          "reason": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "destination": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "notes": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "certainty": {
+            "type": "string",
+            "enum": [
+              "clear",
+              "unclear"
+            ]
+          },
+          "evidence_quote": {
+            "type": [
+              "string",
+              "null"
+            ]
+          }
+        }
+      }
+    },
+    "diagnoses": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": [
+          "dx_label",
+          "status",
+          "mdt_agreement",
+          "certainty"
+        ],
+        "properties": {
+          "stated_date": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "pattern": "^\\d{4}-\\d{2}-\\d{2}$"
+          },
+          "dx_label": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "icd10": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "status": {
+            "type": "string",
+            "enum": [
+              "current",
+              "past"
+            ]
+          },
+          "mdt_agreement": {
+            "type": "string",
+            "enum": [
+              "agree",
+              "disagree",
+              "unclear"
+            ]
+          },
+          "certainty": {
+            "type": "string",
+            "enum": [
+              "clear",
+              "unclear"
+            ]
+          },
+          "evidence_quote": {
+            "type": [
+              "string",
+              "null"
+            ]
+          }
+        }
+      }
+    },
+    "medications": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": [
+          "action",
+          "med_name",
+          "dose_text",
+          "certainty"
+        ],
+        "properties": {
+          "action": {
+            "type": "string",
+            "enum": [
+              "start",
+              "continue",
+              "change",
+              "stop"
+            ]
+          },
+          "action_date": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "pattern": "^\\d{4}-\\d{2}-\\d{2}$"
+          },
+          "med_name": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "dose_text": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "dose_mg_total_per_day": {
+            "type": [
+              "number",
+              "null"
+            ]
+          },
+          "route": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "schedule": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "adherence": {
+            "type": "string",
+            "enum": [
+              "good",
+              "partial",
+              "poor",
+              "unknown"
+            ]
+          },
+          "response": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "side_effects": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          },
+          "reason_change": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "certainty": {
+            "type": "string",
+            "enum": [
+              "clear",
+              "unclear"
+            ]
+          },
+          "evidence_quote": {
+            "type": [
+              "string",
+              "null"
+            ]
+          }
+        }
+      }
+    }
+  }
+}
