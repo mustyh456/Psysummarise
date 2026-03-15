@@ -65,32 +65,37 @@ Return a JSON object with exactly these fields:
 
   "prior_acquaintance": "State whether you had previous acquaintance with the patient before examination. If unclear from notes write: Not documented — clinician to complete.",
 
-  "nature_of_disorder": "Describe the diagnosed mental disorder, its nature, and current presentation. Include the diagnosis, how long symptoms have been present, and the clinical picture that led to admission.",
+  "nature_of_disorder": "Describe the diagnosed mental disorder using the statutory phrase 'mental disorder of a nature and degree which makes it appropriate for the patient to receive medical treatment in a hospital'. Follow with the specific diagnosis, how long symptoms have been present, and the clinical picture. After your prose, add a line break and write EVIDENCE: followed by bullet points citing specific documents and dates from the extracted data that support this, e.g. '- Admission 01/01: [observation]'.",
 
-  "current_symptoms": "Describe the patient's current symptoms and behaviour in clinical terms. Draw on MSE findings, nursing observations, and ward round entries. Be specific — include thought content, perception, affect, behaviour, and insight.",
+  "current_symptoms": "Describe the patient's current symptoms and behaviour in clinical terms. Draw on MSE findings, nursing observations, and ward round entries. Be specific — include thought content, perception, affect, behaviour, and insight. After your prose add EVIDENCE: with bullet points citing specific document entries and dates.",
 
-  "risk_to_self": "Describe risk to the patient's own health and safety. Include self-neglect, poor oral intake, medication non-compliance, impaired judgement, and any history of self-harm or suicidal ideation documented in the notes. If not documented write: Not documented in available notes.",
+  "risk_to_self": "Describe risk to the patient's own health and safety including self-neglect, medication non-compliance, impaired judgement, and any history of self-harm or suicidal ideation. After your prose add EVIDENCE: with bullet points citing specific documents and dates. If genuinely not documented write: No evidence of risk to self documented in available notes — clinician to review.",
 
-  "risk_to_others": "Describe any risk to other persons documented in the notes. If not documented write: Not documented in available notes.",
+  "risk_to_others": "Describe any risk to other persons documented in the notes with specific evidence. If not documented write: No evidence of risk to others documented in available notes — clinician to review.",
 
-  "why_informal_insufficient": "Explain why informal admission is not appropriate. Address the patient's insight into their condition, their capacity or willingness to consent to voluntary admission and treatment, and whether they would be likely to leave or disengage if not detained.",
+  "why_informal_insufficient": "Explain why informal admission is not appropriate. Address the patient's insight into their condition, their capacity or willingness to consent to voluntary treatment, and whether they would likely disengage if not detained. Cite specific evidence from the notes.",
 
-  "why_community_insufficient": "Explain why community treatment is not appropriate at this stage. Reference the acuity of the presentation, the need for close monitoring, structured medication management, and MDT input that cannot be safely provided in the community.",
+  "why_community_insufficient": "Explain why community treatment is not appropriate. Reference the acuity of presentation, need for close monitoring, structured medication management, and MDT input that cannot be safely provided in the community. Cite specific evidence.",
 
-  "ongoing_treatment_needed": "Explain why continued inpatient treatment is required. Avoid saying 'treatment cannot be completed within 28 days'. Instead focus on: the patient's mental health not yet being optimised, the need for ongoing MDT assessment and input, the importance of monitoring medication response and side effects, the need to ensure capacity and insight develop sufficiently, and the requirement for safe and planned discharge rather than premature discharge.",
+  "ongoing_treatment_needed": "Explain why continued inpatient treatment under Section 3 is required. Focus on: the patient's mental health not yet being optimised; the need for ongoing MDT assessment and medication monitoring; the importance of developing insight and capacity; and the requirement for safe and planned discharge. Do not say 'treatment cannot be completed within 28 days'. Cite specific evidence from the notes.",
 
-  "medication_history": "Summarise medication history, including previous medications, reasons for any changes or discontinuation, current medication, and the patient's compliance and response.",
+  "medication_history": "Summarise medication history including previous medications, reasons for any changes or discontinuation, current medication, compliance, and response. Cite specific documents and dates.",
 
-  "recommendation": "A concluding statement recommending Section 3 detention. Frame this around: further inpatient treatment being required for optimisation of mental health, to ensure appropriate clinical management, and to allow safe and planned discharge when clinically indicated.",
+  "recommendation": "A concluding statement using language such as: 'I recommend detention under Section 3 of the Mental Health Act as further inpatient treatment is required for optimisation of [patient]'s mental health, to ensure appropriate clinical management, and to allow safe and planned discharge when clinically indicated.' Tailor to the specific clinical picture.",
 
-  "confidence_note": "List any areas where the available notes provided limited information and where clinician review and completion is especially important."
+  "confidence_note": "List any areas where the available notes provided limited information and clinician review is especially important. Be specific about which fields need the most attention."
 }}
 
-Only use information explicitly present in the extracted data.
-Where information is absent write: Not documented in available notes — clinician to complete.
-Do not invent or infer clinical details not present in the notes.
-Use clear, formal clinical language appropriate for a statutory MHA document.
-The tone should reflect a senior clinician making a considered clinical recommendation, not a bureaucratic checklist."""
+Critical rules:
+- Use the statutory phrase 'mental disorder of a nature and degree' in the nature_of_disorder field
+- Always include EVIDENCE citations after each clinical claim — this is essential for clinician trust and auditability
+- Where information is genuinely absent write clearly: 'Not documented in available notes — clinician to complete'
+- Never invent or infer clinical details not present in the notes
+- Use clear, formal clinical language appropriate for a statutory MHA document
+- The tone should reflect a senior clinician making a considered recommendation, not a bureaucratic checklist
+- Risk fields should never be left blank — either cite evidence or explicitly state it is not documented"""
+
+
 
 
 def load_schema():
