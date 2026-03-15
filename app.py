@@ -54,7 +54,7 @@ You only use information explicitly present in the notes provided.
 You output only valid JSON."""
 
 S3_PROMPT = """Based on the following extracted clinical data from multiple psychiatric documents,
-draft a Section 3 MHA recommendation.
+draft a Section 3 MHA recommendation (Form A8) for medical review.
 
 Extracted clinical data:
 {extracted_data}
@@ -62,20 +62,35 @@ Extracted clinical data:
 Return a JSON object with exactly these fields:
 {{
   "patient_name": "First name of patient",
-  "nature_of_disorder": "2-3 sentence description of the mental disorder and current presentation",
-  "current_symptoms": "Key current symptoms and mental state findings",
-  "risk_to_self": "Current risk to self with supporting evidence",
-  "risk_to_others": "Current risk to others with supporting evidence",
-  "why_informal_insufficient": "Clinical reasoning for why informal admission is not appropriate",
-  "why_section2_insufficient": "Clinical reasoning for why Section 2 is no longer sufficient (write Not applicable if not relevant)",
-  "treatment_available": "What treatment is available and appropriate in hospital",
-  "why_community_insufficient": "Why treatment cannot be provided without detention",
-  "medication_history": "Brief summary of medication history and compliance",
-  "recommendation": "A clear concluding statement recommending Section 3 detention",
-  "confidence_note": "Any fields where information was limited or uncertain"
+
+  "prior_acquaintance": "State whether you had previous acquaintance with the patient before examination. If unclear from notes write: Not documented — clinician to complete.",
+
+  "nature_of_disorder": "Describe the diagnosed mental disorder, its nature, and current presentation. Include the diagnosis, how long symptoms have been present, and the clinical picture that led to admission.",
+
+  "current_symptoms": "Describe the patient's current symptoms and behaviour in clinical terms. Draw on MSE findings, nursing observations, and ward round entries. Be specific — include thought content, perception, affect, behaviour, and insight.",
+
+  "risk_to_self": "Describe risk to the patient's own health and safety. Include self-neglect, poor oral intake, medication non-compliance, impaired judgement, and any history of self-harm or suicidal ideation documented in the notes. If not documented write: Not documented in available notes.",
+
+  "risk_to_others": "Describe any risk to other persons documented in the notes. If not documented write: Not documented in available notes.",
+
+  "why_informal_insufficient": "Explain why informal admission is not appropriate. Address the patient's insight into their condition, their capacity or willingness to consent to voluntary admission and treatment, and whether they would be likely to leave or disengage if not detained.",
+
+  "why_community_insufficient": "Explain why community treatment is not appropriate at this stage. Reference the acuity of the presentation, the need for close monitoring, structured medication management, and MDT input that cannot be safely provided in the community.",
+
+  "ongoing_treatment_needed": "Explain why continued inpatient treatment is required. Avoid saying 'treatment cannot be completed within 28 days'. Instead focus on: the patient's mental health not yet being optimised, the need for ongoing MDT assessment and input, the importance of monitoring medication response and side effects, the need to ensure capacity and insight develop sufficiently, and the requirement for safe and planned discharge rather than premature discharge.",
+
+  "medication_history": "Summarise medication history, including previous medications, reasons for any changes or discontinuation, current medication, and the patient's compliance and response.",
+
+  "recommendation": "A concluding statement recommending Section 3 detention. Frame this around: further inpatient treatment being required for optimisation of mental health, to ensure appropriate clinical management, and to allow safe and planned discharge when clinically indicated.",
+
+  "confidence_note": "List any areas where the available notes provided limited information and where clinician review and completion is especially important."
 }}
 
-Only use information present in the extracted data. Where information is absent, write 'Not documented in available notes'."""
+Only use information explicitly present in the extracted data.
+Where information is absent write: Not documented in available notes — clinician to complete.
+Do not invent or infer clinical details not present in the notes.
+Use clear, formal clinical language appropriate for a statutory MHA document.
+The tone should reflect a senior clinician making a considered clinical recommendation, not a bureaucratic checklist."""
 
 
 def load_schema():
@@ -199,15 +214,19 @@ def render_clinical_summary(data):
 def render_s3(s3_data, patient_name):
     st.warning("⚠️ AI-assisted draft only. All content must be reviewed and approved by the responsible clinician before use.")
 
+    st.markdown("""
+> *I am approved under section 12 of the Act as having special experience in the diagnosis or treatment of mental disorder.*
+""")
+
     fields = [
-        ("Nature of disorder", "nature_of_disorder"),
-        ("Current symptoms", "current_symptoms"),
+        ("Prior acquaintance with patient", "prior_acquaintance"),
+        ("Nature of mental disorder", "nature_of_disorder"),
+        ("Current symptoms and mental state", "current_symptoms"),
         ("Risk to self", "risk_to_self"),
         ("Risk to others", "risk_to_others"),
         ("Why informal admission is insufficient", "why_informal_insufficient"),
-        ("Why Section 2 is insufficient", "why_section2_insufficient"),
-        ("Available treatment in hospital", "treatment_available"),
         ("Why community treatment is insufficient", "why_community_insufficient"),
+        ("Why ongoing inpatient treatment is required", "ongoing_treatment_needed"),
         ("Medication history and compliance", "medication_history"),
         ("Recommendation", "recommendation"),
     ]
@@ -222,9 +241,45 @@ def render_s3(s3_data, patient_name):
         st.info(f"**AI confidence note:** {confidence}")
 
     st.divider()
-    plain = f"SECTION 3 MHA RECOMMENDATION\nPatient: {patient_name}\n\n"
-    for label, key in fields:
-        plain += f"{label.upper()}\n{edits.get(key, '')}\n\n"
+    plain = f"""MEDICAL RECOMMENDATION FOR ADMISSION FOR TREATMENT (SECTION 3 MHA 1983 — FORM A8)
+Patient: {patient_name}
+
+I am approved under section 12 of the Act as having special experience in the diagnosis or treatment of mental disorder.
+
+PRIOR ACQUAINTANCE
+{edits.get('prior_acquaintance', '')}
+
+NATURE OF MENTAL DISORDER
+{edits.get('nature_of_disorder', '')}
+
+CURRENT SYMPTOMS AND MENTAL STATE
+{edits.get('current_symptoms', '')}
+
+RISK TO SELF
+{edits.get('risk_to_self', '')}
+
+RISK TO OTHERS
+{edits.get('risk_to_others', '')}
+
+WHY INFORMAL ADMISSION IS INSUFFICIENT
+{edits.get('why_informal_insufficient', '')}
+
+WHY COMMUNITY TREATMENT IS INSUFFICIENT
+{edits.get('why_community_insufficient', '')}
+
+WHY ONGOING INPATIENT TREATMENT IS REQUIRED
+{edits.get('ongoing_treatment_needed', '')}
+
+MEDICATION HISTORY AND COMPLIANCE
+{edits.get('medication_history', '')}
+
+RECOMMENDATION
+{edits.get('recommendation', '')}
+
+---
+AI-ASSISTED DRAFT — Must be reviewed and signed by an approved clinician before submission.
+Generated by PsySummarise (research prototype). Not validated for clinical use.
+"""
 
     st.download_button(
         "Download Section 3 draft (.txt)",
