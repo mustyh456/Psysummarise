@@ -473,7 +473,7 @@ with st.sidebar:
 
 # ── Tabs ─────────────────────────────────────────────────────────────────────
 
-tab1, tab2 = st.tabs(["Single note extraction", "Section 3 recommendation"])
+tab1, tab2, tab3 = st.tabs(["📄 Single note extraction", "📋 Section 3 recommendation", "⚖️ Tribunal report"])
 
 # ── Tab 1 ─────────────────────────────────────────────────────────────────────
 with tab1:
