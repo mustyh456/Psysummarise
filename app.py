@@ -42,7 +42,18 @@ Rules:
 - doc_id: use the document type if identifiable (e.g. "WR1", "Discharge"), otherwise "Unknown"
 - For any field you cannot determine from the note, use null
 - adherence must be one of: good, partial, poor, unknown
-- certainty must be one of: clear, unclear
+- certainty must be one of: clear, unclear, not_stated
+  * clear = explicitly stated in the note
+  * unclear = mentioned but ambiguous
+  * not_stated = not mentioned at all in the note
+- mdt_agreement must be one of: agree, disagree, unclear, not_stated
+- For medication route and schedule: infer from drug name if not explicitly stated
+  * Mirtazapine → route: oral, schedule: nocte
+  * Olanzapine oral → route: oral
+  * Lorazepam PRN → route: oral, schedule: PRN
+  * Zopiclone → route: oral, schedule: nocte PRN
+  * Depot injections → route: IM depot
+  * If genuinely unclear, use null
 - action_date and event_date must be YYYY-MM-DD format, or null
 - Include evidence_quote for every item where certainty is "clear"
 - icd10: provide the ICD-10 code where you can confidently infer it, otherwise null
@@ -212,7 +223,7 @@ Return JSON with exactly these fields:
 
   "q8_circumstances_current_admission": "Detailed multi-paragraph narrative: background; prodromal period; specific symptoms and behaviours; full risk picture including ALL documented risk events such as suicidal ideation, threats, weapons, confrontational behaviour; what led to MHA assessment; legal basis. Do not omit risk events.",
 
-  "q9_mental_disorder_present": "'Yes.' One sentence: diagnosis and key symptoms only. Do not include insight here.",
+  "q9_mental_disorder_present": "Answer 'Yes.' or 'No.' only. Do not include diagnosis or symptoms here — those belong in section 10.",
 
   "q10_diagnosis": "State diagnosis. One sentence clinical basis. In substance-related cases address substance-induced versus primary disorder.",
 
@@ -220,13 +231,13 @@ Return JSON with exactly these fields:
 
   "q12_detention_required": "Detailed reasoning: nature of disorder; insight and attitude to treatment; specific risk behaviours making community management unsafe; why hospital is necessary. Explicit causal chain: mental disorder leading to impaired insight leading to risk behaviour leading to need for detention.",
 
-  "q13_treatment": "PHARMACOLOGICAL: all medications with doses and routes, compliance, any refused with reasons, whether IM has been required. NON-PHARMACOLOGICAL: psychology, OT, substance misuse referrals — state if any were declined or not taken up. ENGAGEMENT: overall engagement and attitude. PLANNED: future treatment.",
+  "q13_treatment": "PHARMACOLOGICAL: all medications with doses and routes, compliance with each, any medications offered but declined with reasons, whether IM medication has been required during admission. NON-PHARMACOLOGICAL: psychology, OT, substance misuse referrals — for each state whether offered, engaged with, or declined. COMMUNITY TEAM INVOLVEMENT: only include this if a referral to EIT, CMHT, or other community team is documented in the notes — if so, state the outcome including if declined or not taken on; do not mention community referrals if not documented. ENGAGEMENT: overall engagement and attitude to treatment. PLANNED: planned treatment going forward.",
 
   "q14_strengths": "All strengths — engagement with staff, compliance, calm and cooperative, no behavioural disturbance, emerging insight, social support, protective factors.",
 
   "q15_current_progress": "PRESENTATION AT ADMISSION: mental state on day of admission. PROGRESS DURING ADMISSION: how mental state evolved. CURRENT NURSING OBSERVATIONS: recent behaviour, engagement, sleep, appetite. CAPACITY: assessment findings with date. INSIGHT: current level. OVERALL TRAJECTORY: improving, stable, or deteriorating.",
 
-  "q16_medication_compliance": "All medications with doses and routes. Compliance with each. Explicitly state: 'No IM medication has been required during this admission' if applicable. Medications offered but declined with reasons. Likely future willingness. Note if refusal appears capacitous but influenced by ongoing symptoms.",
+  "q16_medication_compliance": "List every medication with name, dose, route, and schedule — infer route and schedule from drug name if not explicitly stated (e.g. Mirtazapine is oral nocte, Lorazepam PRN is oral). State compliance with each medication. Explicitly state whether IM medication has been required — if not: 'No IM medication has been required during this admission.' Address any medications offered but declined and the patient's reasons. Comment on likely future willingness to accept treatment. Note if any refusal appears capacitous but may be influenced by ongoing symptoms.",
 
   "q17_mca_consideration": "State capacity assessment finding with date. If patient has capacity: 'The Mental Health Act remains the appropriate legal framework as the patient meets the criteria for detention regardless of their capacity to consent to treatment.' Keep this brief.",
 
@@ -238,11 +249,11 @@ Return JSON with exactly these fields:
 
   "q21_treatment_in_hospital_justified": "Why inpatient treatment is justified. Cover: monitoring needs; risks contained by inpatient setting including impulsive behaviour and risk of retaliation from others if patient acts on delusional beliefs in the community; why community treatment is currently insufficient.",
 
-  "q22_risk_if_discharged": "Draw from pre-computed risk assessment. Structure as: RISK TO SELF; RISK TO OTHERS; RISK FROM OTHERS AND RETALIATION; RISK OF SELF-NEGLECT; RISK FROM SUBSTANCE USE; OVERALL SUMMARY. Calibrate to admission stage — for mid-admission patients who are settled, state that risk is currently reduced in hospital but remains moderate in the community.",
+  "q22_risk_if_discharged": "Draw from the pre-computed risk assessment. Structure as: RISK TO SELF; RISK TO OTHERS; RISK FROM OTHERS AND RETALIATION; RISK OF SELF-NEGLECT; RISK FROM SUBSTANCE USE; OVERALL SUMMARY. Use calibrated tribunal phrasing throughout — for example 'moderate risk of deterioration and recurrence of harmful behaviours' rather than simply 'moderate risk'. For mid-admission patients who are settled, state that risk is currently reduced in the structured inpatient setting but there remains a moderate risk of deterioration and recurrence if discharged prematurely.",
 
   "q23_community_risk_management": "ALTERNATIVES CONSIDERED: informal admission and why not appropriate, CRHT involvement, CMHT follow-up, CTO and whether applicable at this stage. WHY CURRENTLY INSUFFICIENT: enforceability of treatment, engagement reliability, insight level. WHAT WOULD NEED TO CHANGE for community management to become safe.",
 
-  "q24_recommendations": "Full recommendation: current symptoms and mental state; risk picture; insight and treatment compliance; trajectory of improvement; why detention criteria remain met; what needs to happen before discharge would be appropriate. Acknowledge improvement where present.",
+  "q24_recommendations": "Full recommendation covering: current symptoms and mental state; risk picture; insight and treatment compliance; trajectory of improvement. Explicitly state whether the criteria for detention continue to be met and why. State what further progress is required before discharge would be clinically appropriate. Acknowledge improvement where present but balance this against ongoing clinical need.",
 
   "confidence_note": "Sections needing most clinician attention."
 }}"""
@@ -386,8 +397,23 @@ def render_clinical_summary(data):
             if med.get("evidence_quote"): st.caption(f'📎 *"{med["evidence_quote"]}"*')
 
 
-def render_risk(risk_data, show_debug):
-    st.markdown(f"**Stage:** {risk_data.get('admission_stage','')}  \n*{risk_data.get('stage_rationale','')}*")
+def render_risk(risk_data, show_debug, doc_count=None):
+    stage = risk_data.get("admission_stage","")
+    rationale = risk_data.get("stage_rationale","")
+    if doc_count:
+        st.caption(f"Risk based on {doc_count} document{'s' if doc_count != 1 else ''} analysed")
+    # Confidence indicator based on doc count
+    if doc_count:
+        if doc_count >= 4:
+            conf_label, conf_color = "High confidence", "success"
+        elif doc_count >= 2:
+            conf_label, conf_color = "Moderate confidence", "warning"
+        else:
+            conf_label, conf_color = "Low confidence — add more documents for better accuracy", "error"
+        if conf_color == "success": st.success(f"Confidence: {conf_label}")
+        elif conf_color == "warning": st.warning(f"Confidence: {conf_label}")
+        else: st.error(f"Confidence: {conf_label}")
+    st.markdown(f"**Stage:** {stage}  \n*{rationale}*")
     domain_labels = {
         "risk_to_self": "Risk to self",
         "risk_to_others": "Risk to others",
@@ -552,30 +578,81 @@ def note_input_widget(key_prefix):
 
 
 def add_notes_widget(key_prefix, session_notes_key, session_extracted_key, api_key):
-    note_text = note_input_widget(key_prefix)
-    c1, c2 = st.columns([3, 1])
-    with c1:
-        add = st.button("Add note →", key=f"{key_prefix}_add")
-    with c2:
-        if st.button("Clear all", key=f"{key_prefix}_clear"):
-            st.session_state[session_notes_key] = []
-            st.session_state[session_extracted_key] = []
-            st.rerun()
-    if add:
-        if not api_key:
-            st.error("Please enter your OpenAI API key in the sidebar.")
-        elif not note_text or not note_text.strip():
-            st.warning("Please provide a note above.")
-        else:
-            n = len(st.session_state[session_notes_key]) + 1
-            with st.spinner(f"Extracting note {n}..."):
-                try:
-                    extracted = extract_note(note_text, api_key)
-                    st.session_state[session_notes_key].append(note_text)
-                    st.session_state[session_extracted_key].append(extracted)
-                    st.success(f"Note {n} added — {extracted.get('patient_id','?')} / {extracted.get('doc_id','?')}")
-                except Exception as e:
-                    st.error(f"Extraction failed: {e}")
+    # ── Input method ──────────────────────────────────────────────────────────
+    input_mode = st.radio("Input method", ["Paste text", "Upload files (PDF / Word)"],
+                          horizontal=True, key=f"{key_prefix}_inputmode")
+
+    if input_mode == "Paste text":
+        note_text = st.text_area("Paste note here", height=160,
+            placeholder="Paste a ward round note, admission summary, MDT review, or discharge letter...",
+            key=f"{key_prefix}_paste")
+        c1, c2 = st.columns([3, 1])
+        with c1:
+            add = st.button("Add note →", key=f"{key_prefix}_add")
+        with c2:
+            if st.button("Clear all", key=f"{key_prefix}_clear"):
+                st.session_state[session_notes_key] = []
+                st.session_state[session_extracted_key] = []
+                st.rerun()
+        if add:
+            if not api_key:
+                st.error("Please enter your OpenAI API key in the sidebar.")
+            elif not note_text or not note_text.strip():
+                st.warning("Please provide a note above.")
+            else:
+                n = len(st.session_state[session_notes_key]) + 1
+                with st.spinner(f"Extracting note {n}..."):
+                    try:
+                        extracted = extract_note(note_text, api_key)
+                        st.session_state[session_notes_key].append(note_text)
+                        st.session_state[session_extracted_key].append(extracted)
+                        st.success(f"Note {n} added — {extracted.get('patient_id','?')} / {extracted.get('doc_id','?')}")
+                    except Exception as e:
+                        st.error(f"Extraction failed: {e}")
+
+    else:
+        st.info("ℹ️ PDFs must contain selectable text. Scanned/image-only PDFs cannot be read.")
+        uploaded_files = st.file_uploader(
+            "Upload one or more files (PDF or Word)",
+            type=["pdf", "docx"],
+            accept_multiple_files=True,
+            key=f"{key_prefix}_multiupload"
+        )
+        c1, c2 = st.columns([3, 1])
+        with c1:
+            add_files = st.button(f"Extract all {len(uploaded_files)} file(s) →" if uploaded_files else "Extract files →",
+                                  key=f"{key_prefix}_addfiles",
+                                  disabled=not uploaded_files)
+        with c2:
+            if st.button("Clear all", key=f"{key_prefix}_clear2"):
+                st.session_state[session_notes_key] = []
+                st.session_state[session_extracted_key] = []
+                st.rerun()
+        if add_files and uploaded_files:
+            if not api_key:
+                st.error("Please enter your OpenAI API key in the sidebar.")
+            else:
+                progress = st.progress(0)
+                for i, f in enumerate(uploaded_files):
+                    text, err = extract_text_from_file(f)
+                    if err == "pdf_empty":
+                        st.error(f"{f.name}: No text extracted — may be a scanned PDF.")
+                        continue
+                    elif err:
+                        st.error(f"{f.name}: Could not read — {err}")
+                        continue
+                    n = len(st.session_state[session_notes_key]) + 1
+                    with st.spinner(f"Extracting {f.name}..."):
+                        try:
+                            extracted = extract_note(text, api_key)
+                            st.session_state[session_notes_key].append(text)
+                            st.session_state[session_extracted_key].append(extracted)
+                            st.success(f"{f.name} → {extracted.get('patient_id','?')} / {extracted.get('doc_id','?')}")
+                        except Exception as e:
+                            st.error(f"{f.name}: Extraction failed — {e}")
+                    progress.progress((i + 1) / len(uploaded_files))
+                progress.empty()
+
     if st.session_state[session_extracted_key]:
         st.markdown(f"**{len(st.session_state[session_extracted_key])} note(s) loaded:**")
         for i, r in enumerate(st.session_state[session_extracted_key]):
@@ -670,7 +747,7 @@ with tab2:
                             (st.session_state.s3_extracted[0].get("patient_id","Patient"))
                         r_tab, d_tab, src_tab = st.tabs(["Risk assessment", "Draft recommendation", "Source data"])
                         with r_tab:
-                            render_risk(risk_result, show_debug)
+                            render_risk(risk_result, show_debug, len(st.session_state.s3_extracted))
                         with d_tab:
                             render_s3(s3_result, patient_name, show_debug)
                         with src_tab:
@@ -713,7 +790,7 @@ with tab3:
                             (st.session_state.tr_extracted[0].get("patient_id","Patient"))
                         r_tab, d_tab, src_tab = st.tabs(["Risk assessment", "Draft report", "Source data"])
                         with r_tab:
-                            render_risk(tr_risk, show_debug)
+                            render_risk(tr_risk, show_debug, len(st.session_state.tr_extracted))
                         with d_tab:
                             render_tribunal(tr_result, patient_name, tribunal_type_key, show_debug)
                         with src_tab:
