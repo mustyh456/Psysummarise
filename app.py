@@ -570,8 +570,11 @@ def compute_risk(extracted, notes, stage, api_key):
 
 def generate_s3(extracted_records, api_key):
     client = OpenAI(api_key=api_key)
+    raw_text = "\n\n---\n\n".join(f"NOTE {i+1}:\n{n}" for i,n in enumerate(raw_notes))
     prompt = S3_PROMPT.format(
-        extracted_data=json.dumps(extracted_records, indent=2, ensure_ascii=False)
+        extracted_data=json.dumps(extracted_records, indent=2, ensure_ascii=False),
+        risk_assessment=json.dumps(risk_assessment, indent=2, ensure_ascii=False),
+        raw_notes=raw_text
     )
     response = client.chat.completions.create(
         model="gpt-4o",
@@ -587,28 +590,19 @@ def generate_s3(extracted_records, api_key):
     return json.loads(output)
 
 
-def generate_tribunal(extracted_records, raw_notes, tribunal_type, api_key):
+def generate_tribunal(extracted_records, raw_notes, risk_assessment, tribunal_type, stage, api_key):
     client = OpenAI(api_key=api_key)
-    raw_notes_text = "\n\n---\n\n".join(
-        f"NOTE {i+1}:\n{note}" for i, note in enumerate(raw_notes)
+    raw_text = "\n\n---\n\n".join(f"NOTE {i+1}:\n{n}" for i,n in enumerate(raw_notes))
+    tmpl = TRIBUNAL_INPATIENT_PROMPT if tribunal_type == "Inpatient detention appeal" else TRIBUNAL_CTO_PROMPT
+    prompt = tmpl.format(
+        extracted_data=json.dumps(extracted_records, indent=2, ensure_ascii=False),
+        raw_notes=raw_text,
+        risk_assessment=json.dumps(risk_assessment, indent=2, ensure_ascii=False),
+        admission_stage=stage
     )
-    if tribunal_type == "Inpatient detention appeal":
-        prompt = TRIBUNAL_INPATIENT_PROMPT.format(
-            extracted_data=json.dumps(extracted_records, indent=2, ensure_ascii=False),
-            raw_notes=raw_notes_text
-        )
-    else:
-        prompt = TRIBUNAL_CTO_PROMPT.format(
-            extracted_data=json.dumps(extracted_records, indent=2, ensure_ascii=False),
-            raw_notes=raw_notes_text
-        )
     response = client.chat.completions.create(
-        model="gpt-4o",
-        temperature=0.0,
-        messages=[
-            {"role": "system", "content": TRIBUNAL_SYSTEM},
-            {"role": "user", "content": prompt}
-        ]
+        model="gpt-4o", temperature=0.0,
+        messages=[{"role":"system","content":TRIBUNAL_SYSTEM},{"role":"user","content":prompt}]
     )
     output = response.choices[0].message.content.strip()
     if output.startswith("```"):
