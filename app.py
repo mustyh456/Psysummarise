@@ -70,6 +70,89 @@ Ward round note:
 
 Return only the JSON object."""
 
+RISK_ENGINE_PROMPT = """You are a consultant psychiatrist performing a structured pre-tribunal risk assessment.
+
+Analyse the following clinical data and produce a calibrated risk assessment across five domains.
+
+EXTRACTED CLINICAL DATA:
+{extracted_data}
+
+RAW CLINICAL NOTES:
+{raw_notes}
+
+ADMISSION STAGE: {admission_stage}
+
+Risk level definitions:
+- LOW: no recent incidents, no active symptoms driving risk, adequate insight and engagement
+- MODERATE: recent risk history OR ongoing symptoms OR partial insight, currently mitigated by structure/support
+- HIGH: recent serious incident PLUS active symptoms AND poor insight/impulsivity — use sparingly
+
+Stage guidance:
+- Acute admission: risk levels reflect the presenting crisis
+- Mid-admission settled: inpatient risk is reduced but community risk remains — do not rate as HIGH unless very recent serious incident
+- Discharge-ready: focus on community risk
+
+Return a JSON object:
+{{
+  "patient_name": "First name",
+  "admission_stage": "{admission_stage}",
+  "domains": {{
+    "risk_to_self": {{
+      "level": "LOW/MODERATE/HIGH",
+      "past_factors": "Historical incidents and risk events",
+      "present_factors": "Current risk in inpatient setting",
+      "future_factors": "Likely risk if discharged prematurely",
+      "increasing_factors": ["factors that increase risk"],
+      "reducing_factors": ["factors that reduce risk"],
+      "evidence": ["specific clinical events from the notes"],
+      "tribunal_paragraph": "Write 2-3 sentences in natural clinical prose as used in real tribunal reports. Do not use EVIDENCE: labels. Embed facts naturally. Distinguish current inpatient risk from likely community risk. Use calibrated language: 'Risk is currently reduced within the structured inpatient setting; however, there remains a moderate risk of deterioration and recurrence of harmful behaviour if discharged prematurely...'"
+    }},
+    "risk_to_others": {{
+      "level": "LOW/MODERATE/HIGH",
+      "past_factors": "",
+      "present_factors": "",
+      "future_factors": "",
+      "increasing_factors": [],
+      "reducing_factors": [],
+      "evidence": [],
+      "tribunal_paragraph": "Natural clinical prose. Calibrated to stage. If no risk: state clearly."
+    }},
+    "risk_from_others": {{
+      "level": "LOW/MODERATE/HIGH",
+      "past_factors": "",
+      "present_factors": "",
+      "future_factors": "",
+      "increasing_factors": [],
+      "reducing_factors": [],
+      "evidence": [],
+      "tribunal_paragraph": "Address retaliation risk and vulnerability. Natural prose."
+    }},
+    "risk_of_self_neglect": {{
+      "level": "LOW/MODERATE/HIGH",
+      "past_factors": "",
+      "present_factors": "",
+      "future_factors": "",
+      "increasing_factors": [],
+      "reducing_factors": [],
+      "evidence": [],
+      "tribunal_paragraph": "Natural clinical prose."
+    }},
+    "risk_substance_use": {{
+      "level": "LOW/MODERATE/HIGH",
+      "past_factors": "",
+      "present_factors": "",
+      "future_factors": "",
+      "increasing_factors": [],
+      "reducing_factors": [],
+      "evidence": [],
+      "tribunal_paragraph": "Natural clinical prose."
+    }}
+  }},
+  "overall_risk_summary": "2-3 sentences of natural clinical prose. State current inpatient risk level and likely community risk separately. Use calibrated language.",
+  "stage_rationale": "One sentence explaining why risk levels are calibrated to this stage."
+}}"""
+
+
 S3_SYSTEM = """You are an expert psychiatrist helping to draft a Section 3 Mental Health Act recommendation.
 You write clearly, clinically, and concisely. You never fabricate clinical details.
 You only use information explicitly present in the notes provided.
@@ -87,21 +170,21 @@ Return a JSON object with exactly these fields:
 
   "prior_acquaintance": "State whether you had previous acquaintance with the patient before examination. If unclear from notes write: Not documented — clinician to complete.",
 
-  "nature_of_disorder": "Describe the diagnosed mental disorder using the statutory phrase 'mental disorder of a nature and degree which makes it appropriate for the patient to receive medical treatment in a hospital'. Follow with the specific diagnosis, how long symptoms have been present, and the clinical picture. After your prose, add a line break and write EVIDENCE: followed by bullet points citing specific documents and dates from the extracted data that support this, e.g. '- Admission 01/01: [observation]'.",
+  "nature_of_disorder": "Describe the diagnosed mental disorder using the statutory phrase 'mental disorder of a nature and degree which makes it appropriate for the patient to receive medical treatment in a hospital'. Follow with the specific diagnosis, how long symptoms have been present, and the clinical picture. ",
 
-  "current_symptoms": "Describe the patient's current symptoms and behaviour in clinical terms. Draw on MSE findings, nursing observations, and ward round entries. Be specific — include thought content, perception, affect, behaviour, and insight. After your prose add EVIDENCE: with bullet points citing specific document entries and dates.",
+  "current_symptoms": "Describe the patient's current symptoms and behaviour in clinical terms. Draw on MSE findings, nursing observations, and ward round entries. Be specific — include thought content, perception, affect, behaviour, and insight. ",
 
-  "risk_to_self": "Describe risk to the patient's own health and safety including self-neglect, medication non-compliance, impaired judgement, and any history of self-harm or suicidal ideation. After your prose add EVIDENCE: with bullet points citing specific documents and dates. If genuinely not documented write: No evidence of risk to self documented in available notes — clinician to review.",
+  "risk_to_self": "Describe risk to the patient's own health and safety including self-neglect, medication non-compliance, impaired judgement, and any history of self-harm or suicidal ideation.  If genuinely not documented write: No evidence of risk to self documented in available notes — clinician to review.",
 
-  "risk_to_others": "Describe any risk to other persons documented in the notes with specific evidence. If not documented write: No evidence of risk to others documented in available notes — clinician to review.",
+  "risk_to_others": "Describe any risk to other persons documented in the notes  If not documented write: No evidence of risk to others documented in available notes — clinician to review.",
 
-  "why_informal_insufficient": "Explain why informal admission is not appropriate. Address the patient's insight into their condition, their capacity or willingness to consent to voluntary treatment, and whether they would likely disengage if not detained. Cite specific evidence from the notes.",
+  "why_informal_insufficient": "Explain why informal admission is not appropriate. Address the patient's insight into their condition, their capacity or willingness to consent to voluntary treatment, and whether they would likely disengage if not detained.",
 
-  "why_community_insufficient": "Explain why community treatment is not appropriate. Reference the acuity of presentation, need for close monitoring, structured medication management, and MDT input that cannot be safely provided in the community. Cite specific evidence.",
+  "why_community_insufficient": "Explain why community treatment is not appropriate. Reference the acuity of presentation, need for close monitoring, structured medication management, and MDT input that cannot be safely provided in the community.",
 
-  "ongoing_treatment_needed": "Explain why continued inpatient treatment under Section 3 is required. Focus on: the patient's mental health not yet being optimised; the need for ongoing MDT assessment and medication monitoring; the importance of developing insight and capacity; and the requirement for safe and planned discharge. Do not say 'treatment cannot be completed within 28 days'. Cite specific evidence from the notes.",
+  "ongoing_treatment_needed": "Explain why continued inpatient treatment under Section 3 is required. Focus on: the patient's mental health not yet being optimised; the need for ongoing MDT assessment and medication monitoring; the importance of developing insight and capacity; and the requirement for safe and planned discharge. Do not say 'treatment cannot be completed within 28 days'.",
 
-  "medication_history": "Summarise medication history including previous medications, reasons for any changes or discontinuation, current medication, compliance, and response. Cite specific documents and dates.",
+  "medication_history": "Summarise medication history including previous medications, reasons for any changes or discontinuation, current medication, compliance, and response.",
 
   "recommendation": "A concluding statement using language such as: 'I recommend detention under Section 3 of the Mental Health Act as further inpatient treatment is required for optimisation of [patient]'s mental health, to ensure appropriate clinical management, and to allow safe and planned discharge when clinically indicated.' Tailor to the specific clinical picture.",
 
@@ -139,7 +222,7 @@ FULL CLINICAL NOTES (raw text — use this for narrative detail, risk history, M
 
 The raw notes contain important clinical detail that must be used, especially for risk history, circumstances of admission, mental state, and recommendations.
 
-Return a JSON object with exactly these fields. Write in formal clinical prose. After substantive claims include EVIDENCE: with specific document/date citations.
+Return a JSON object with exactly these fields. Write in formal clinical prose.
 
 {{
   "patient_name": "First name of patient",
@@ -204,18 +287,27 @@ Critical rules:
 
 
 
-TRIBUNAL_CTO_PROMPT = """You are preparing a Responsible Clinician's report for a Community Treatment Order (CTO) Mental Health Tribunal.
-The patient is in the community under a CTO and is appealing against the CTO conditions.
-
-You have two sources of information. Use BOTH:
+TRIBUNAL_CTO_PROMPT = """You are preparing a Responsible Clinician's report for a CTO Mental Health Tribunal.
+The patient is in the community under a CTO and is appealing against it.
 
 STRUCTURED EXTRACTED DATA:
 {extracted_data}
 
-FULL CLINICAL NOTES (raw text — use this for narrative detail, risk history, MSE findings, and background):
+FULL CLINICAL NOTES:
 {raw_notes}
 
-Return a JSON object with exactly these fields. Write in formal clinical prose. After substantive claims include EVIDENCE: with specific document/date citations.
+PRE-COMPUTED RISK ASSESSMENT:
+{risk_assessment}
+
+ADMISSION STAGE: {admission_stage}
+
+CRITICAL WRITING RULES:
+- Write in natural clinical prose as used in real NHS tribunal reports
+- Do NOT use bullet points, numbered lists, or EVIDENCE: labels within fields
+- Embed clinical facts naturally in the prose as a consultant would write them
+- Sections 3 and 4 are about physical/cognitive accessibility ONLY
+- Calibrate risk language appropriately to the patient's current situation
+- Do not invent or infer details not present in the notes
 
 {{
   "patient_name": "First name of patient",
@@ -344,21 +436,21 @@ Return a JSON object with exactly these fields:
 
   "prior_acquaintance": "State whether you had previous acquaintance with the patient before examination. If unclear from notes write: Not documented — clinician to complete.",
 
-  "nature_of_disorder": "Describe the diagnosed mental disorder using the statutory phrase 'mental disorder of a nature and degree which makes it appropriate for the patient to receive medical treatment in a hospital'. Follow with the specific diagnosis, how long symptoms have been present, and the clinical picture. After your prose, add a line break and write EVIDENCE: followed by bullet points citing specific documents and dates from the extracted data that support this, e.g. '- Admission 01/01: [observation]'.",
+  "nature_of_disorder": "Describe the diagnosed mental disorder using the statutory phrase 'mental disorder of a nature and degree which makes it appropriate for the patient to receive medical treatment in a hospital'. Follow with the specific diagnosis, how long symptoms have been present, and the clinical picture. ",
 
-  "current_symptoms": "Describe the patient's current symptoms and behaviour in clinical terms. Draw on MSE findings, nursing observations, and ward round entries. Be specific — include thought content, perception, affect, behaviour, and insight. After your prose add EVIDENCE: with bullet points citing specific document entries and dates.",
+  "current_symptoms": "Describe the patient's current symptoms and behaviour in clinical terms. Draw on MSE findings, nursing observations, and ward round entries. Be specific — include thought content, perception, affect, behaviour, and insight. ",
 
-  "risk_to_self": "Describe risk to the patient's own health and safety including self-neglect, medication non-compliance, impaired judgement, and any history of self-harm or suicidal ideation. After your prose add EVIDENCE: with bullet points citing specific documents and dates. If genuinely not documented write: No evidence of risk to self documented in available notes — clinician to review.",
+  "risk_to_self": "Describe risk to the patient's own health and safety including self-neglect, medication non-compliance, impaired judgement, and any history of self-harm or suicidal ideation.  If genuinely not documented write: No evidence of risk to self documented in available notes — clinician to review.",
 
-  "risk_to_others": "Describe any risk to other persons documented in the notes with specific evidence. If not documented write: No evidence of risk to others documented in available notes — clinician to review.",
+  "risk_to_others": "Describe any risk to other persons documented in the notes  If not documented write: No evidence of risk to others documented in available notes — clinician to review.",
 
-  "why_informal_insufficient": "Explain why informal admission is not appropriate. Address the patient's insight into their condition, their capacity or willingness to consent to voluntary treatment, and whether they would likely disengage if not detained. Cite specific evidence from the notes.",
+  "why_informal_insufficient": "Explain why informal admission is not appropriate. Address the patient's insight into their condition, their capacity or willingness to consent to voluntary treatment, and whether they would likely disengage if not detained.",
 
-  "why_community_insufficient": "Explain why community treatment is not appropriate. Reference the acuity of presentation, need for close monitoring, structured medication management, and MDT input that cannot be safely provided in the community. Cite specific evidence.",
+  "why_community_insufficient": "Explain why community treatment is not appropriate. Reference the acuity of presentation, need for close monitoring, structured medication management, and MDT input that cannot be safely provided in the community.",
 
-  "ongoing_treatment_needed": "Explain why continued inpatient treatment under Section 3 is required. Focus on: the patient's mental health not yet being optimised; the need for ongoing MDT assessment and medication monitoring; the importance of developing insight and capacity; and the requirement for safe and planned discharge. Do not say 'treatment cannot be completed within 28 days'. Cite specific evidence from the notes.",
+  "ongoing_treatment_needed": "Explain why continued inpatient treatment under Section 3 is required. Focus on: the patient's mental health not yet being optimised; the need for ongoing MDT assessment and medication monitoring; the importance of developing insight and capacity; and the requirement for safe and planned discharge. Do not say 'treatment cannot be completed within 28 days'.",
 
-  "medication_history": "Summarise medication history including previous medications, reasons for any changes or discontinuation, current medication, compliance, and response. Cite specific documents and dates.",
+  "medication_history": "Summarise medication history including previous medications, reasons for any changes or discontinuation, current medication, compliance, and response.",
 
   "recommendation": "A concluding statement using language such as: 'I recommend detention under Section 3 of the Mental Health Act as further inpatient treatment is required for optimisation of [patient]'s mental health, to ensure appropriate clinical management, and to allow safe and planned discharge when clinically indicated.' Tailor to the specific clinical picture.",
 
@@ -396,7 +488,7 @@ FULL CLINICAL NOTES (raw text — use this for narrative detail, risk history, M
 
 The raw notes contain important clinical detail that must be used, especially for risk history, circumstances of admission, mental state, and recommendations.
 
-Return a JSON object with exactly these fields. Write in formal clinical prose. After substantive claims include EVIDENCE: with specific document/date citations.
+Return a JSON object with exactly these fields. Write in formal clinical prose.
 
 {{
   "patient_name": "First name of patient",
@@ -468,7 +560,7 @@ The patient is in the community under a CTO and is appealing against the CTO con
 Extracted clinical data:
 {extracted_data}
 
-Return a JSON object with exactly these fields. For each field, after your clinical prose write EVIDENCE: followed by bullet points citing specific document names and dates from the extracted data.
+Return a JSON object with exactly these fields. 
 
 {{
   "patient_name": "First name of patient",
@@ -487,7 +579,7 @@ Return a JSON object with exactly these fields. For each field, after your clini
 
   "q7_reasons_previous_admissions": "Reasons for any previous admissions or recall to hospital.",
 
-  "q8_circumstances_current_admission": "Circumstances leading up to the most recent admission. Include presenting symptoms, behaviour, risk factors, and what led to MHA assessment. Cite specific evidence.",
+  "q8_circumstances_current_admission": "Circumstances leading up to the most recent admission. Include presenting symptoms, behaviour, risk factors, and what led to MHA assessment.",
 
   "q9_mental_disorder": "Is the patient suffering from a mental disorder within the meaning of the MHA? Provide diagnosis and clinical basis.",
 
@@ -568,7 +660,7 @@ def compute_risk(extracted, notes, stage, api_key):
     if output.startswith("```"): output = "\n".join(l for l in output.splitlines() if not l.strip().startswith("```"))
     return json.loads(output)
 
-def generate_s3(extracted_records, api_key):
+def generate_s3(extracted_records, raw_notes, risk_assessment, api_key):
     client = OpenAI(api_key=api_key)
     raw_text = "\n\n---\n\n".join(f"NOTE {i+1}:\n{n}" for i,n in enumerate(raw_notes))
     prompt = S3_PROMPT.format(
@@ -577,18 +669,13 @@ def generate_s3(extracted_records, api_key):
         raw_notes=raw_text
     )
     response = client.chat.completions.create(
-        model="gpt-4o",
-        temperature=0.0,
-        messages=[
-            {"role": "system", "content": S3_SYSTEM},
-            {"role": "user", "content": prompt}
-        ]
+        model="gpt-4o", temperature=0.0,
+        messages=[{"role":"system","content":S3_SYSTEM},{"role":"user","content":prompt}]
     )
     output = response.choices[0].message.content.strip()
     if output.startswith("```"):
         output = "\n".join(l for l in output.splitlines() if not l.strip().startswith("```"))
     return json.loads(output)
-
 
 def generate_tribunal(extracted_records, raw_notes, risk_assessment, tribunal_type, stage, api_key):
     client = OpenAI(api_key=api_key)
