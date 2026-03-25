@@ -396,6 +396,115 @@ def extract_note(note_text, api_key):
     return json.loads(output)
 
 
+DISCHARGE_SYSTEM = """You are an expert consultant psychiatrist writing a discharge summary.
+You write in natural NHS clinical prose — clear, concise, and GP-friendly.
+You only use information explicitly present in the notes provided.
+You never fabricate clinical details.
+You output only valid JSON."""
+
+DISCHARGE_PROMPT = """You are preparing a psychiatric discharge summary from multiple clinical documents.
+
+You have two sources of information. Use BOTH:
+
+STRUCTURED EXTRACTED DATA:
+{extracted_data}
+
+FULL CLINICAL NOTES (raw text — use for narrative detail, MSE, risk, medications, and follow-up):
+{raw_notes}
+
+WRITING RULES:
+- Write in natural NHS consultant prose. No bullet points. No EVIDENCE labels.
+- Be concise and GP-friendly — the reader is a GP who needs to understand what happened and what to do next.
+- Use temporal language to show how the clinical picture evolved.
+- Do not invent missing information. If something is not documented, state this clearly.
+- Each section should be one or two focused paragraphs. Do not pad.
+
+Return a JSON object with exactly these fields:
+
+{{
+  "patient_name": "First name of patient",
+
+  "reason_for_admission": "Write 2-3 sentences describing why the patient was admitted. Include: the presenting symptoms and behaviour; the precipitating factors (e.g. substance use, medication non-adherence, relapse); and the legal basis for admission if detained. Be specific — name the symptoms, the behaviours, and the circumstances.",
+
+  "clinical_narrative": "Write a clinical narrative of the admission in 3-4 sentences. Cover: what was found on assessment; the diagnosis established or working diagnosis; the key clinical features at presentation; and the initial treatment plan. This is the main explanatory paragraph — it should tell the GP the story of the admission.",
+
+  "progress_on_ward": "Describe how the patient's condition evolved during the admission in 3-4 sentences. Cover: what changed and when; response to treatment; any setbacks or incidents; engagement with the clinical team; and the trajectory towards discharge. Show the journey — not just the endpoint.",
+
+  "mse_on_discharge": "Write a brief mental state examination at the point of discharge in natural prose. Cover: appearance and behaviour; speech; mood (subjective and objective); thoughts (form and content — any residual delusions or ideation); perceptions (hallucinations); cognition if relevant; insight. Write as a clinician would document it — concise and factual.",
+
+  "diagnosis": "State the discharge diagnosis. Use ICD-10 terminology where possible. If there is diagnostic uncertainty, state this. One to two sentences only.",
+
+  "risk_and_crisis_plan": "Summarise the risk picture at discharge and the crisis plan in 3-4 sentences. Cover: current risk to self and others; any specific triggers or warning signs; what the patient should do if they deteriorate; who to contact in a crisis; and any safety netting advice given. Be specific — name the risks and name the plan.",
+
+  "discharge_medications": "List all medications at discharge. For each: name, dose, route, frequency, and any instructions. If there are changes from admission medications, note them. If the patient declined any medication, state this. Write as a medication list in prose: e.g. 'Mirtazapine 30mg oral nocte, Olanzapine 10mg oral nocte...'",
+
+  "follow_up_and_gp_actions": "State the follow-up plan clearly in 3-4 sentences. Cover: who will follow up and when (CMHT, EIT, outpatient clinic); any referrals made; any pending investigations; and specific actions required from the GP — including medication monitoring, blood tests, DVLA if relevant, safeguarding if relevant. Be explicit about what the GP needs to do.",
+
+  "confidence_note": "List any sections where information was limited in the notes and clinician review is especially important."
+}}
+
+Critical rules:
+- Never leave a field blank — either populate it from the notes or state clearly what is not documented
+- Do not invent follow-up plans, referrals, or medications not present in the notes
+- The tone should be that of a consultant writing to a GP — professional, clear, and helpful
+- Discharge medications must reflect the notes accurately — do not guess doses or routes"""
+
+
+def generate_discharge(extracted_records, raw_notes, api_key):
+    client = OpenAI(api_key=api_key)
+    raw_text = "\n\n---\n\n".join(f"NOTE {i+1}:\n{n}" for i,n in enumerate(raw_notes))
+    prompt = DISCHARGE_PROMPT.format(
+        extracted_data=json.dumps(extracted_records, indent=2, ensure_ascii=False),
+        raw_notes=raw_text
+    )
+    response = client.chat.completions.create(
+        model="gpt-4o", temperature=0.0,
+        messages=[{"role":"system","content":DISCHARGE_SYSTEM},{"role":"user","content":prompt}]
+    )
+    output = response.choices[0].message.content.strip()
+    if output.startswith("```"):
+        output = "\n".join(l for l in output.splitlines() if not l.strip().startswith("```"))
+    return json.loads(output)
+
+
+def render_discharge(ds_data, patient_name, show_debug):
+    st.warning("⚠️ AI-assisted draft. Must be reviewed and approved by the responsible clinician before sending.")
+
+    fields = [
+        ("Reason for admission",            "reason_for_admission"),
+        ("Clinical narrative",              "clinical_narrative"),
+        ("Progress on ward",                "progress_on_ward"),
+        ("Mental state on discharge",       "mse_on_discharge"),
+        ("Diagnosis",                       "diagnosis"),
+        ("Risk and crisis plan",            "risk_and_crisis_plan"),
+        ("Discharge medications",           "discharge_medications"),
+        ("Follow-up and GP actions",        "follow_up_and_gp_actions"),
+    ]
+
+    edits = {}
+    for label, key in fields:
+        val = ds_data.get(key) or "Not documented in available notes — clinician to complete"
+        edits[key] = st.text_area(label, value=val, height=120, key=f"ds_{key}")
+
+    if show_debug and ds_data.get("confidence_note"):
+        with st.expander("AI confidence note"):
+            st.info(ds_data["confidence_note"])
+
+    st.divider()
+
+    plain = f"PSYCHIATRIC DISCHARGE SUMMARY\nPatient: {patient_name}\n\n"
+    for label, key in fields:
+        plain += f"{label.upper()}\n{edits.get(key, '')}\n\n"
+    plain += "---\nAI-ASSISTED DRAFT. Must be reviewed and signed by the responsible clinician before sending.\nGenerated by PsySummarise (research prototype). Not validated for clinical use.\n"
+
+    st.download_button(
+        "⬇ Download discharge summary (.txt)",
+        data=plain,
+        file_name=f"DischargeSummary_{patient_name}.txt",
+        mime="text/plain"
+    )
+
+
 def compute_risk(extracted, notes, stage, api_key):
     client = OpenAI(api_key=api_key)
     raw_text = "\n\n---\n\n".join(f"NOTE {i+1}:\n{n}" for i,n in enumerate(notes))
@@ -794,7 +903,7 @@ st.title("\U0001f9e0 PsySummarise")
 st.caption("Structured extraction from psychiatric documentation \u00b7 Research prototype \u00b7 Not validated for clinical use")
 st.divider()
 
-for key in ["s3_notes","s3_extracted","tr_notes","tr_extracted"]:
+for key in ["s3_notes","s3_extracted","tr_notes","tr_extracted","ds_notes","ds_extracted"]:
     if key not in st.session_state: st.session_state[key]=[]
 
 with st.sidebar:
@@ -806,9 +915,10 @@ with st.sidebar:
     st.divider()
     st.caption("PsySummarise uses GPT-4o. Research prototype. Not validated for clinical use.")
 
-tab1,tab2,tab3=st.tabs(["\U0001f4c4 Single note extraction",
-                         "\U0001f4cb Section 3 recommendation",
-                         "\u2696 Tribunal report"])
+tab1,tab2,tab3,tab4=st.tabs(["\U0001f4c4 Single note extraction",
+                              "\U0001f4cb Section 3 recommendation",
+                              "\u2696 Tribunal report",
+                              "\U0001f4cb Discharge summary"])
 
 with tab1:
     note_text=note_input_widget("t1") if "note_input_widget" in dir() else st.text_area("Paste note",height=180,key="t1_paste")
@@ -886,5 +996,26 @@ with tab3:
                         with r_tab: render_risk(tr_risk,show_debug,len(st.session_state.tr_extracted))
                         with d_tab: render_tribunal(tr_result,patient_name,tribunal_type_key,show_debug)
                         with src_tab: st.json(st.session_state.tr_extracted)
+                    except Exception as e: st.error(f"Error: {e}")
+    else: st.info("Add at least one note above to begin.")
+
+with tab4:
+    st.markdown("### Generate a discharge summary from multiple notes")
+    st.caption("Add each clinical document — ward rounds, MDT notes, admission summary, discharge letter. The more notes, the better the output.")
+    add_notes_widget("ds","ds_notes","ds_extracted",api_key)
+    if st.session_state.ds_extracted:
+        st.divider()
+        if st.button("Generate discharge summary \u2192",key="gen_ds"):
+            if not api_key: st.error("Please enter your OpenAI API key in the sidebar.")
+            else:
+                with st.spinner("Generating discharge summary — this may take 20-40 seconds..."):
+                    try:
+                        ds_result=generate_discharge(st.session_state.ds_extracted,st.session_state.ds_notes,api_key)
+                        st.success("Draft generated. Review all sections carefully.")
+                        st.divider()
+                        patient_name=ds_result.get("patient_name") or st.session_state.ds_extracted[0].get("patient_id","Patient")
+                        d_tab,src_tab=st.tabs(["Draft summary","Source data"])
+                        with d_tab: render_discharge(ds_result,patient_name,show_debug)
+                        with src_tab: st.json(st.session_state.ds_extracted)
                     except Exception as e: st.error(f"Error: {e}")
     else: st.info("Add at least one note above to begin.")
