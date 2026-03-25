@@ -212,88 +212,12 @@ You output only valid JSON."""
 TRIBUNAL_INPATIENT_PROMPT = """You are preparing a Responsible Clinician's report for an inpatient Mental Health Tribunal.
 The patient is detained in hospital and is appealing against their detention under Section 2 or Section 3.
 
-You have two sources of information. Use BOTH:
+You have three sources of information. Use ALL of them:
 
 STRUCTURED EXTRACTED DATA:
 {extracted_data}
 
 FULL CLINICAL NOTES (raw text — use this for narrative detail, risk history, MSE findings, and background):
-{raw_notes}
-
-The raw notes contain important clinical detail that must be used, especially for risk history, circumstances of admission, mental state, and recommendations.
-
-Return a JSON object with exactly these fields. Write in formal clinical prose.
-
-{{
-  "patient_name": "First name of patient",
-  "rc_name": "Not documented — clinician to complete",
-  "tribunal_type": "Inpatient detention appeal",
-
-  "q3_factors_affecting_hearing": "Does the patient have any intellectual disability, physical disability, sensory impairment, or communication difficulty that would affect their ability to participate in a tribunal hearing? This is NOT about mental state symptoms. If no such factors are documented write: There are no known intellectual disabilities, physical disabilities, or communication difficulties that would affect the patient's ability to participate in a tribunal hearing.",
-
-  "q4_adjustments": "Are any physical or communication adjustments needed for fair proceedings — such as interpreters, hearing loops, or accessible formats? If none needed write: No specific adjustments are required at this time.",
-
-  "q5_forensic_history": "State any index offences or formal forensic history. If none, write this clearly. Then add a brief contextual note about any risk-relevant behaviours documented in the notes even if not resulting in formal proceedings — e.g. confrontation risk, threatening behaviour.",
-
-  "q6_previous_mh_involvement": "List all previous mental health involvement including: any previous psychiatric admissions with dates; any previous community mental health input; any history of mental health difficulties managed in primary care. Draw from the full narrative notes, not just the structured data. If this is a first admission state this clearly.",
-
-  "q7_reasons_previous_admissions": "Give reasons for any previous admissions or recalls. If this is the first admission write: This is the patient's first psychiatric admission.",
-
-  "q8_circumstances_current_admission": "Write a detailed multi-paragraph clinical narrative covering: (1) relevant background history and any precipitating factors; (2) the prodromal period — how symptoms developed over time; (3) the specific symptoms and behaviours that raised concern, including the full risk picture — suicidal ideation, threats, dangerous behaviour, substance use; (4) what specifically precipitated the MHA assessment; (5) the legal basis for detention. This section must include the complete risk history that led to admission. Do not omit risk events.",
-
-  "q9_mental_disorder_present": "Answer "Yes." or "No." only. Do not include diagnosis or symptoms here — those belong in section 10.",
-
-  "q10_diagnosis": "State the diagnosis. Explain the clinical basis — what symptoms and history support it. Address any diagnostic uncertainty or differential diagnoses. In substance-related cases, address whether this is substance-induced or a primary disorder and what evidence supports that distinction.",
-
-  "q11_learning_disability": "Does the patient have a learning disability? State yes or no with brief explanation.",
-
-  "q12_detention_required": "Address NATURE and DEGREE as two explicitly separate concepts: NATURE — describe the type of mental disorder, its characteristic features, its pattern and course over time, associated features such as poor insight or non-adherence, and what typically happens when untreated. DEGREE — describe the current severity right now: specific symptoms present, behavioural disturbance and functional impairment, how this episode compares to baseline, and why the current degree of illness makes inpatient treatment appropriate. Then address: the patient's current insight and attitude to treatment; specific risk behaviours making community management unsafe; and the explicit causal chain from mental disorder through impaired insight to risk behaviour to need for detention.",
-
-  "q13_treatment": "PHARMACOLOGICAL: all medications with doses and routes, compliance, any refused with reasons, whether IM medication has been required. NON-PHARMACOLOGICAL: psychology, OT, substance misuse referrals — state if offered, engaged with, or declined. COMMUNITY TEAM INVOLVEMENT: only include if a referral to EIT, CMHT, or other community team is documented — state outcome including if declined or not taken on; do not invent referrals. ENGAGEMENT: overall engagement and attitude. PLANNED: planned treatment going forward.",
-
-  "q14_strengths": "List all strengths and positive factors including: engagement with staff; compliance with any treatment; emerging insight; social support; protective factors; any positive prognostic indicators. Draw from the full narrative notes.",
-
-  "q15_current_progress": "Structure as: PRESENTATION AT ADMISSION — mental state, behaviour, and risk on the day of admission. PROGRESS DURING ADMISSION — how clinical picture evolved, key turning points. CURRENT NURSING OBSERVATIONS — most recent observations on behaviour, engagement, sleep, appetite, mood. INSIGHT — current level: does the patient understand they are unwell, do they accept treatment, has this changed. CAPACITY — one brief sentence only: whether the patient has been assessed as having capacity. Do not elaborate on legal implications here — that is for section 17.",
-
-  "q16_medication_compliance": "List every medication with name, dose, route, and schedule — infer route and schedule from drug name if not stated (Mirtazapine is oral nocte, Lorazepam PRN is oral). State compliance with each. Explicitly state whether IM medication has been required — if not: 'No IM medication has been required during this admission.' Address medications offered but declined and reasons. Comment on likely future willingness. Note if refusal appears capacitous but influenced by ongoing symptoms.",
-
-  "q17_mca_consideration": "Legal framework reasoning only — do not repeat the full capacity assessment, just reference it briefly. State whether the patient has or lacks capacity (from section 15). Then address: if the patient HAS capacity, state that the MHA remains the appropriate framework as the patient meets criteria for detention regardless of capacity — the MCA is not appropriate where MHA criteria are met. If the patient LACKS capacity, address whether a DoLS under the MCA 2005 would be appropriate and less restrictive.",
-
-  "q18_incidents_self_harm_others": "This is a critical section. Document ALL incidents of harm, threats, or dangerous behaviour from BOTH the admission period and the period prior to admission. Draw from the full narrative notes. Include: suicidal ideation; threats of self-harm; actual self-harm; threatening behaviour towards others; any weapons involvement; risk-driven behaviour such as keeping objects for protection. Do not leave this section incomplete.",
-
-  "q19_property_damage": "Document any property damage or threats. If none, state this clearly. Note any escalating behaviours that stopped short of actual damage but indicate risk.",
-
-  "q20_section2_detention_justified": "This is a critical section. Provide detailed reasoning for why detention remains justified covering: (1) HEALTH — why detention is necessary for the patient's health; (2) SAFETY — why detention is necessary for the patient's safety, with reference to specific risk events; (3) PROTECTION OF OTHERS — any risk to third parties; (4) WHY COMMUNITY IS INSUFFICIENT — why the patient cannot be safely managed outside hospital at this time. The reasoning must be specific and evidence-based, not generic.",
-
-  "q21_treatment_in_hospital_justified": "Address why inpatient treatment specifically is justified. This applies in all cases including Section 2. Cover: why hospital-based monitoring is needed; what risks are contained by the inpatient setting; why community treatment is not currently sufficient; what the inpatient setting provides that cannot be replicated in the community.",
-
-  "q22_risk_if_discharged": "Draw from the pre-computed risk assessment. Structure as: RISK TO SELF; RISK TO OTHERS; RISK FROM OTHERS AND RETALIATION; RISK OF SELF-NEGLECT; RISK FROM SUBSTANCE USE; OVERALL SUMMARY. Use calibrated tribunal phrasing — for example 'moderate risk of deterioration and recurrence of harmful behaviours' not just 'moderate risk'. For mid-admission patients who are settled, state that risk is currently reduced in the structured inpatient setting but there remains a moderate risk of deterioration and recurrence if discharged prematurely.",
-
-  "q23_community_risk_management": "Address how risks could or could not be managed in the community. Cover: whether any community treatment options exist; why they are currently insufficient — address engagement, insight, enforceability; what would need to change before community management would be safe.",
-
-  "q24_recommendations": "Structure as: (1) CURRENT CLINICAL PICTURE — acknowledge any improvement, describe current mental state and trajectory. (2) CRITERIA FOR DETENTION — explicitly state whether criteria continue to be met and why. (3) CONSEQUENCES OF DISCHARGE — answer the tribunal's core question directly: if this patient were discharged now, what would likely happen? Be specific. Address: likely deterioration in mental state; risks to own health, safety, and physical wellbeing; risks to others; risk of treatment disengagement; substance use resumption if relevant; vulnerability in the community; likelihood of readmission. Use language such as 'discharge at this stage would be likely to result in...'. (4) WHAT NEEDS TO HAPPEN — what clinical progress is required before discharge would be appropriate.",
-
-  "confidence_note": "List sections where information was limited and clinician completion is most important."
-}}
-
-Critical rules:
-- Use BOTH the structured data AND the raw notes — the raw notes contain essential narrative detail
-- Section 18 must include ALL documented risk events — this is non-negotiable
-- Section 6 must include primary care history if documented in the raw notes
-- Sections 3 and 4 are about physical/cognitive accessibility only, not mental state
-- Never leave a field empty — provide content or state explicitly what is not documented
-- Do not invent details not present in either source
-- Use formal clinical language appropriate for a statutory tribunal report"""
-
-
-
-TRIBUNAL_CTO_PROMPT = """You are preparing a Responsible Clinician's report for a CTO Mental Health Tribunal.
-The patient is in the community under a CTO and is appealing against it.
-
-STRUCTURED EXTRACTED DATA:
-{extracted_data}
-
-FULL CLINICAL NOTES:
 {raw_notes}
 
 PRE-COMPUTED RISK ASSESSMENT:
@@ -301,192 +225,17 @@ PRE-COMPUTED RISK ASSESSMENT:
 
 ADMISSION STAGE: {admission_stage}
 
-CRITICAL WRITING RULES:
-- Write in natural clinical prose as used in real NHS tribunal reports
-- Do NOT use bullet points, numbered lists, or EVIDENCE: labels within fields
-- Embed clinical facts naturally in the prose as a consultant would write them
-- Sections 3 and 4 are about physical/cognitive accessibility ONLY
-- Calibrate risk language appropriately to the patient's current situation
-- Do not invent or infer details not present in the notes
-
-{{
-  "patient_name": "First name of patient",
-  "rc_name": "Not documented — clinician to complete",
-  "tribunal_type": "CTO appeal",
-
-  "q2_capacity_hearing": "Does the patient have capacity to decide whether to attend the tribunal and be represented? State clearly with date of assessment if documented.",
-
-  "q3_factors_affecting_hearing": "Does the patient have any intellectual disability, physical disability, sensory impairment, or communication difficulty that would affect tribunal participation? This is NOT about mental state. If none write: There are no known intellectual disabilities, physical disabilities, or communication difficulties that would affect the patient's ability to participate in a tribunal hearing.",
-
-  "q4_adjustments": "Are any physical or communication adjustments needed? If none write: No specific adjustments are required at this time.",
-
-  "q5_forensic_history": "State any formal forensic history. If none, state this clearly. Add contextual note about any risk-relevant behaviours from the notes.",
-
-  "q6_previous_mh_involvement": "All previous mental health involvement with dates — admissions, discharges, community input, primary care history. Draw from the full narrative notes.",
-
-  "q7_reasons_previous_admissions": "Reasons for any previous admissions. If first admission state this.",
-
-  "q8_circumstances_current_admission": "Detailed multi-paragraph narrative covering: background history; prodromal period; specific symptoms and behaviours raising concern; full risk picture; what led to MHA assessment; legal basis for admission and subsequent CTO.",
-
-  "q9_mental_disorder": "State diagnosis and describe current symptoms. Address whether the disorder is of a nature and degree requiring ongoing CTO treatment.",
-
-  "q10_learning_disability": "Does the patient have a learning disability? State yes or no.",
-
-  "q11_treatment_appropriate": "Is mental disorder of a nature or degree such that ongoing CTO treatment is appropriate? Explain why community treatment under the CTO remains necessary.",
-
-  "q12_treatment_details": "Cover: (1) PHARMACOLOGICAL — medications, doses, compliance; (2) NON-PHARMACOLOGICAL — community input, psychology, social work; (3) ENGAGEMENT — patient's engagement with CTO conditions; (4) PLANNED — future treatment intentions.",
-
-  "q13_strengths": "All strengths and positive factors including engagement, compliance, support network, insight, and protective factors.",
-
-  "q14_current_progress": "Current progress in the community covering behaviour, mental state, compliance with CTO, insight, and overall trajectory.",
-
-  "q15_medication_compliance": "Patient's understanding of medication, compliance with depot or oral medication under the CTO, and likely future willingness if CTO were rescinded.",
-
-  "q16_mca_consideration": "State capacity assessment findings. Explain why MHA rather than MCA is appropriate.",
-
-  "q17_incidents": "ALL incidents of harm, threats, or dangerous behaviour from both the admission period and community — draw from full narrative notes. Do not omit risk events.",
-
-  "q18_treatment_necessary": "Detailed reasoning for why ongoing CTO treatment is necessary covering: health necessity; safety necessity; risk to others if any; why voluntary community treatment without CTO would be insufficient.",
-
-  "q19_risk_if_cto_rescinded": "Structured risk assessment if CTO were rescinded: RISK TO SELF; RISK TO OTHERS; RISK OF SELF-NEGLECT; RISK FROM NON-ADHERENCE TO MEDICATION; OVERALL SUMMARY with specific causal reasoning.",
-
-  "q20_community_risk_management": "How risks are currently managed under the CTO. What would happen without compulsory powers — address enforceability, engagement, and medication adherence.",
-
-  "q21_recommendations": "Full recommendation with reasoning covering: diagnosis; mental state; risk; insight; treatment compliance; why CTO criteria remain met; consequences of rescission.",
-
-  "confidence_note": "Sections where information was limited and clinician completion is most important."
-}}
-
-Critical rules:
-- Use BOTH structured data AND raw notes — raw notes contain essential narrative
-- Section 17 must include ALL documented risk events
-- Sections 3 and 4 are about physical/cognitive accessibility only
-- Never leave a field empty
-- Do not invent details not present in either source
-- Use formal clinical language appropriate for a statutory tribunal report"""
-
-import streamlit as st
-import json
-import os
-import io
-from openai import OpenAI
-
-st.set_page_config(page_title="PsySummarise", page_icon="🧠", layout="wide")
-
-st.markdown("""
-<style>
-@import url('https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500&family=IBM+Plex+Sans:wght@300;400;500;600&display=swap');
-html, body, [class*="css"] { font-family: 'IBM Plex Sans', sans-serif; }
-.mono { font-family: 'IBM Plex Mono', monospace; }
-.stTextArea textarea { font-family: 'IBM Plex Mono', monospace; font-size: 13px; }
-.stButton > button {
-    background: #3b82f6; color: white; border: none; border-radius: 8px;
-    font-family: 'IBM Plex Mono', monospace; font-weight: 500;
-    padding: 0.6rem 2rem; width: 100%; font-size: 14px;
-}
-.stButton > button:hover { background: #2563eb; }
-</style>
-""", unsafe_allow_html=True)
-
-SCHEMA_FILE = "extraction_schema.json"
-SYSTEM_PROMPT = "You output only valid JSON. Do not include explanations, markdown, or code fences."
-
-EXTRACTION_PROMPT = """You are a clinical NLP system that extracts structured information from psychiatric ward round notes.
-
-Extract ALL relevant clinical events and return a single JSON object that strictly matches this schema:
-{schema}
-
-Rules:
-- patient_id: use the patient's first name as it appears in the note, or "Unknown" if not present
-- doc_id: use the document type if identifiable (e.g. "WR1", "Discharge"), otherwise "Unknown"
-- For any field you cannot determine from the note, use null
-- adherence must be one of: good, partial, poor, unknown
-- certainty must be one of: clear, unclear, not_stated
-  * clear = explicitly stated; unclear = ambiguous; not_stated = not mentioned
-- mdt_agreement: agree, disagree, unclear, not_stated
-- Infer medication route/schedule if not stated: Mirtazapine=oral/nocte, Lorazepam=oral/PRN, Zopiclone=oral/nocte PRN, Olanzapine=oral, depot injections=IM depot
-- action_date and event_date must be YYYY-MM-DD format, or null
-- Include evidence_quote for every item where certainty is "clear"
-- icd10: provide the ICD-10 code where you can confidently infer it, otherwise null
-- event_type rules:
-  * "admission" = patient being admitted for the first time in this episode
-  * "section_change" = legal status noted or changed during ongoing admission
-  * "discharge" = patient being discharged or discharge being planned
-  * In ward round notes, "Legal Status: Section X MHA" almost always means section_change
-
-Ward round note:
-\"\"\"{note}\"\"\"
-
-Return only the JSON object."""
-
-S3_SYSTEM = """You are an expert psychiatrist helping to draft a Section 3 Mental Health Act recommendation.
-You write clearly, clinically, and concisely. You never fabricate clinical details.
-You only use information explicitly present in the notes provided.
-You output only valid JSON."""
-
-S3_PROMPT = """Based on the following extracted clinical data from multiple psychiatric documents,
-draft a Section 3 MHA recommendation (Form A8) for medical review.
-
-Extracted clinical data:
-{extracted_data}
-
-Return a JSON object with exactly these fields:
-{{
-  "patient_name": "First name of patient",
-
-  "prior_acquaintance": "State whether you had previous acquaintance with the patient before examination. If unclear from notes write: Not documented — clinician to complete.",
-
-  "nature_of_disorder": "Describe the diagnosed mental disorder using the statutory phrase 'mental disorder of a nature and degree which makes it appropriate for the patient to receive medical treatment in a hospital'. Follow with the specific diagnosis, how long symptoms have been present, and the clinical picture. ",
-
-  "current_symptoms": "Describe the patient's current symptoms and behaviour in clinical terms. Draw on MSE findings, nursing observations, and ward round entries. Be specific — include thought content, perception, affect, behaviour, and insight. ",
-
-  "risk_to_self": "Describe risk to the patient's own health and safety including self-neglect, medication non-compliance, impaired judgement, and any history of self-harm or suicidal ideation.  If genuinely not documented write: No evidence of risk to self documented in available notes — clinician to review.",
-
-  "risk_to_others": "Describe any risk to other persons documented in the notes  If not documented write: No evidence of risk to others documented in available notes — clinician to review.",
-
-  "why_informal_insufficient": "Explain why informal admission is not appropriate. Address the patient's insight into their condition, their capacity or willingness to consent to voluntary treatment, and whether they would likely disengage if not detained.",
-
-  "why_community_insufficient": "Explain why community treatment is not appropriate. Reference the acuity of presentation, need for close monitoring, structured medication management, and MDT input that cannot be safely provided in the community.",
-
-  "ongoing_treatment_needed": "Explain why continued inpatient treatment under Section 3 is required. Focus on: the patient's mental health not yet being optimised; the need for ongoing MDT assessment and medication monitoring; the importance of developing insight and capacity; and the requirement for safe and planned discharge. Do not say 'treatment cannot be completed within 28 days'.",
-
-  "medication_history": "Summarise medication history including previous medications, reasons for any changes or discontinuation, current medication, compliance, and response.",
-
-  "recommendation": "A concluding statement using language such as: 'I recommend detention under Section 3 of the Mental Health Act as further inpatient treatment is required for optimisation of [patient]'s mental health, to ensure appropriate clinical management, and to allow safe and planned discharge when clinically indicated.' Tailor to the specific clinical picture.",
-
-  "confidence_note": "List any areas where the available notes provided limited information and clinician review is especially important. Be specific about which fields need the most attention."
-}}
-
-Critical rules:
-- Use the statutory phrase 'mental disorder of a nature and degree' in the nature_of_disorder field
-- Always include EVIDENCE citations after each clinical claim — this is essential for clinician trust and auditability
-- Where information is genuinely absent write clearly: 'Not documented in available notes — clinician to complete'
-- Never invent or infer clinical details not present in the notes
-- Use clear, formal clinical language appropriate for a statutory MHA document
-- The tone should reflect a senior clinician making a considered recommendation, not a bureaucratic checklist
-- Risk fields should never be left blank — either cite evidence or explicitly state it is not documented"""
-
-
-
-
-TRIBUNAL_SYSTEM = """You are an expert consultant psychiatrist preparing a statutory Mental Health Tribunal report.
-You write clearly, clinically, and with appropriate legal precision.
-You only use information explicitly present in the notes provided.
-You never fabricate clinical details.
-You output only valid JSON."""
-
-TRIBUNAL_INPATIENT_PROMPT = """You are preparing a Responsible Clinician's report for an inpatient Mental Health Tribunal.
-The patient is detained in hospital and is appealing against their detention under Section 2 or Section 3.
-
-You have two sources of information. Use BOTH:
-
-STRUCTURED EXTRACTED DATA:
-{extracted_data}
-
-FULL CLINICAL NOTES (raw text — use this for narrative detail, risk history, MSE findings, and background):
-{raw_notes}
-
 The raw notes contain important clinical detail that must be used, especially for risk history, circumstances of admission, mental state, and recommendations.
+
+CRITICAL WRITING RULES — apply to every section:
+- Write in natural NHS consultant prose. Do not use bullet points anywhere in the output. Do not use "EVIDENCE:" labels.
+- Every section must use consequence-based, causal reasoning — not just description. Show WHY, not just WHAT.
+- Use temporal language throughout. Show how the clinical picture has evolved over time.
+- Sections 15, 20, 23, and 24 are the most important sections. Write each with a minimum of 3-4 sentences of substantive clinical reasoning.
+- Do not write summaries. Write clinical reasoning and clinical judgment.
+- Where the patient has improved, acknowledge this — but then address what risks remain and why discharge remains premature.
+- The tribunal's core question is always: "Should this person remain detained?" Answer it directly in sections 20, 23, and 24.
+- Never use generic phrases like "appropriate monitoring" or "intensive monitoring" without specifying what is being monitored and why.
 
 Return a JSON object with exactly these fields. Write in formal clinical prose.
 
@@ -519,7 +268,7 @@ Return a JSON object with exactly these fields. Write in formal clinical prose.
 
   "q14_strengths": "List all strengths and positive factors including: engagement with staff; compliance with any treatment; emerging insight; social support; protective factors; any positive prognostic indicators. Draw from the full narrative notes.",
 
-  "q15_current_progress": "Provide a detailed account covering: (1) PROGRESS — changes in mental state since admission; (2) BEHAVIOUR — ward behaviour, engagement, any incidents; (3) CAPACITY — capacity assessment findings with date if documented; (4) INSIGHT — current level of insight, understanding of illness, attitude to treatment; (5) OVERALL TRAJECTORY — is the patient improving, stable, or deteriorating.",
+  "q15_current_progress": "Write four clearly delineated paragraphs. PRESENTATION AT ADMISSION: describe the mental state, specific risk behaviours, and presenting symptoms on the day of admission — include the specific events that led to admission. PROGRESS DURING ADMISSION: describe how the clinical picture has evolved since admission — what has improved, what has not changed, and what key clinical turning points occurred. Include specific events or changes where possible. CURRENT NURSING OBSERVATIONS: describe the most recent ward behaviour — engagement with staff, sleep, appetite, agitation, incidents or absence of incidents. INSIGHT: state clearly the current level — does the patient accept they are unwell, do they accept the need for treatment, do they understand the severity of their presentation, and has this changed since admission. CAPACITY: one brief sentence only — state the finding. Do not elaborate here; legal framework discussion belongs in section 17.",
 
   "q16_medication_compliance": "Describe the patient's understanding of their medication, compliance with prescribed treatment, and likely future willingness to accept treatment. Address both pharmacological and non-pharmacological treatment separately.",
 
@@ -529,15 +278,15 @@ Return a JSON object with exactly these fields. Write in formal clinical prose.
 
   "q19_property_damage": "Document any property damage or threats. If none, state this clearly. Note any escalating behaviours that stopped short of actual damage but indicate risk.",
 
-  "q20_section2_detention_justified": "This is a critical section. Provide detailed reasoning for why detention remains justified covering: (1) HEALTH — why detention is necessary for the patient's health; (2) SAFETY — why detention is necessary for the patient's safety, with reference to specific risk events; (3) PROTECTION OF OTHERS — any risk to third parties; (4) WHY COMMUNITY IS INSUFFICIENT — why the patient cannot be safely managed outside hospital at this time. The reasoning must be specific and evidence-based, not generic.",
+  "q20_section2_detention_justified": "This is a critical section. Write four paragraphs of clinical reasoning — do not summarise. HEALTH: explain specifically why detention is necessary for the patient's health — address the nature and severity of the mental disorder, the treatment required, and what would happen to the patient's mental health without hospital treatment. SAFETY: explain why detention is necessary for the patient's safety — reference specific risk events by name (suicidal ideation, self-harm threats, dangerous behaviour), explain the causal chain from mental disorder to risk behaviour, and state why this risk cannot be safely managed in the community. PROTECTION OF OTHERS: address any risk to third parties — if risk exists, describe it specifically; if no risk, state this clearly. WHY COMMUNITY IS INSUFFICIENT: explain directly why the patient cannot be safely managed outside hospital right now — address insight, treatment adherence, absence of enforceable community powers, and what would likely happen if detained were lifted. Do not write generic statements — use the specific facts of this case.",
 
   "q21_treatment_in_hospital_justified": "Address why inpatient treatment specifically is justified. This applies in all cases including Section 2. Cover: why hospital-based monitoring is needed; what risks are contained by the inpatient setting; why community treatment is not currently sufficient; what the inpatient setting provides that cannot be replicated in the community.",
 
   "q22_risk_if_discharged": "Provide a structured risk assessment with the following headings: RISK TO SELF — include all documented self-harm ideation, threats, and behaviour with causal reasoning about what would happen if discharged; RISK TO OTHERS — document any risk to third parties; RISK OF SELF-NEGLECT AND VULNERABILITY — document any history of poor self-care or functional decline; RISK RELATED TO SUBSTANCE USE — if relevant, describe the relationship between substance use, mental state, and risk; OVERALL RISK SUMMARY — current risk level and key factors that would precipitate deterioration on discharge.",
 
-  "q23_community_risk_management": "Address how risks could or could not be managed in the community. Cover: whether any community treatment options exist; why they are currently insufficient — address engagement, insight, enforceability; what would need to change before community management would be safe.",
+  "q23_community_risk_management": "Write three paragraphs. COMMUNITY OPTIONS CONSIDERED: describe which community treatment options exist for this patient — CMHT follow-up, crisis team, substance misuse services, psychology, depot medication in the community, or other options. WHY INSUFFICIENT NOW: explain specifically why each option is currently insufficient — address the patient's level of insight, their current engagement with treatment, their history of treatment adherence, whether community measures would be enforceable, and what gap exists between what community services can offer and what this patient currently needs. WHAT NEEDS TO CHANGE: state clearly and specifically what clinical progress is required before community management could be considered safe — this should be a realistic, specific list of what the tribunal would need to see.",
 
-  "q24_recommendations": "Provide a full recommendation with clinical reasoning covering: the current diagnosis and mental state; the risk picture; the patient's insight and attitude to treatment; the trajectory of improvement; and why the criteria for detention remain met at this time. The recommendation should read as a considered clinical opinion, not a formulaic statement.",
+  "q24_recommendations": "This is the section the tribunal will scrutinise most. Write four paragraphs. CURRENT CLINICAL PICTURE: acknowledge any genuine improvement honestly — do not overstate deterioration — but describe the current mental state accurately, including what symptoms or risks remain. State the current trajectory. CRITERIA FOR DETENTION: state explicitly and with reasoning whether the criteria for detention continue to be met. Reference the nature and degree of the disorder, the insight picture, the risk picture, and the treatment requirements. Do not just assert the criteria are met — demonstrate it. CONSEQUENCES OF DISCHARGE NOW: answer the tribunal's core question directly and specifically — if discharged today, what would likely happen? Address each of the following where relevant: likely deterioration in mental state without hospital-based treatment; risk of self-harm or suicidal behaviour; risk of harm to or confrontation with others; risk of disengagement from treatment; resumption of substance use if relevant; vulnerability in the community; likelihood of readmission under emergency powers. Use language such as 'discharge at this stage would, in my clinical judgment, be likely to result in...'. BEFORE DISCHARGE: state clearly what must be achieved before discharge can be considered appropriate — specific, realistic, and clinical.",
 
   "confidence_note": "List sections where information was limited and clinician completion is most important."
 }}
@@ -848,62 +597,13 @@ Generated by PsySummarise (research prototype). Not validated for clinical use.
 
 # ── Header ───────────────────────────────────────────────────────────────────
 
-st.set_page_config(page_title="PsySummarise", page_icon="\U0001f9e0", layout="wide")
 
 import io
 
-def extract_text_from_file(uploaded_file):
-    name = uploaded_file.name.lower()
-    if name.endswith(".pdf"):
-        try:
-            import pdfplumber
-            with pdfplumber.open(io.BytesIO(uploaded_file.read())) as pdf:
-                text = "\n".join(p.extract_text() or "" for p in pdf.pages)
-            if not text.strip(): return None, "pdf_empty"
-            return text, None
-        except Exception as e: return None, str(e)
-    elif name.endswith(".docx"):
-        try:
-            from docx import Document
-            doc = Document(io.BytesIO(uploaded_file.read()))
-            return "\n".join(p.text for p in doc.paragraphs if p.text.strip()), None
-        except Exception as e: return None, str(e)
-    return None, "unsupported"
 
 ACTION_ICONS = {"start":"\U0001f7e2","continue":"\U0001f535","change":"\U0001f7e1","stop":"\U0001f534"}
 ADHERENCE_ICONS = {"good":"\u2705","partial":"\u26a0","poor":"\u274c","unknown":"\u2753"}
 
-def render_clinical_summary(data):
-    st.markdown(f"## {data.get('patient_id') or 'Unknown'}")
-    st.caption(f"Document: {data.get('doc_id') or 'Unknown'}")
-    for adm in data.get("admissions",[]):
-        with st.container(border=True):
-            c1,c2,c3=st.columns(3)
-            c1.metric("Legal status",adm.get("legal_status") or "?")
-            c2.metric("Event type",adm.get("event_type") or "?")
-            c3.metric("Date",adm.get("event_date") or "unknown")
-            if adm.get("reason"): st.markdown(f"**Reason:** {adm['reason']}")
-            if adm.get("evidence_quote"): st.caption(f'\U0001f4ce *"{adm["evidence_quote"]}"*')
-    for dx in data.get("diagnoses",[]):
-        with st.container(border=True):
-            st.markdown(f"**{dx.get('dx_label') or 'Unknown'}**")
-            c=st.columns(4)
-            if dx.get("icd10"): c[0].metric("ICD-10",dx["icd10"])
-            if dx.get("status"): c[1].metric("Status",dx["status"])
-            if dx.get("mdt_agreement"): c[2].metric("MDT",dx["mdt_agreement"])
-            if dx.get("certainty"): c[3].metric("Certainty",dx["certainty"])
-            if dx.get("evidence_quote"): st.caption(f'\U0001f4ce *"{dx["evidence_quote"]}"*')
-    for med in data.get("medications",[]):
-        action=med.get("action") or "?"; adh=med.get("adherence") or "unknown"
-        with st.container(border=True):
-            st.markdown(f"{ACTION_ICONS.get(action,'\u26aa')} **{action.upper()}** — {med.get('med_name') or '?'} {med.get('dose_text') or ''}")
-            c=st.columns(4)
-            if med.get("route"): c[0].metric("Route",med["route"])
-            if med.get("schedule"): c[1].metric("Schedule",med["schedule"])
-            c[2].metric("Adherence",f"{ADHERENCE_ICONS.get(adh,'\u2753')} {adh}")
-            c[3].metric("Certainty",med.get("certainty") or "?")
-            if med.get("response"): st.markdown(f"**Response:** {med['response']}")
-            if med.get("evidence_quote"): st.caption(f'\U0001f4ce *"{med["evidence_quote"]}"*')
 
 def render_risk(risk_data, show_debug, doc_count=None):
     if doc_count:
