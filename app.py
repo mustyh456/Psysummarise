@@ -256,13 +256,13 @@ Return a JSON object with exactly these fields. Write in formal clinical prose.
 
   "q8_circumstances_current_admission": "Write a detailed multi-paragraph clinical narrative covering: (1) relevant background history and any precipitating factors; (2) the prodromal period — how symptoms developed over time; (3) the specific symptoms and behaviours that raised concern, including the full risk picture — suicidal ideation, threats, dangerous behaviour, substance use; (4) what specifically precipitated the MHA assessment; (5) the legal basis for detention. This section must include the complete risk history that led to admission. Do not omit risk events.",
 
-  "q9_mental_disorder_present": "State clearly that the patient is suffering from a mental disorder. Describe the specific symptoms that characterise the disorder — include thought content, perceptual disturbances, affect, behaviour, and insight. This should read as a clinical description not a checkbox.",
+  "q9_mental_disorder_present": "Answer 'Yes.' Then add one brief sentence only, identifying the category of disorder (e.g. 'Yes. Jordan is suffering from a substance-induced psychotic disorder.'). Do not elaborate further — full clinical description belongs in sections 10 and 12.",
 
-  "q10_diagnosis": "State the diagnosis. Explain the clinical basis — what symptoms and history support it. Address any diagnostic uncertainty or differential diagnoses. In substance-related cases, address whether this is substance-induced or a primary disorder and what evidence supports that distinction.",
+  "q10_diagnosis": "State the diagnosis only. One or two sentences maximum. Do not include explanatory paragraphs, clinical basis, or differential diagnoses here. Example format: 'Substance-induced psychosis (MDMA-related). A primary psychotic disorder cannot be excluded at this stage.' That is all that is required in this field.",
 
   "q11_learning_disability": "Does the patient have a learning disability? State yes or no with brief explanation.",
 
-  "q12_detention_required": "Address whether mental disorder requires detention for assessment or treatment. This is a critical section. Cover: (1) the nature and severity of the mental disorder; (2) the patient's insight and attitude to treatment; (3) the specific risk behaviours that make community management unsafe; (4) why hospital is necessary — what can be provided here that cannot be provided elsewhere. The causal chain should be explicit: mental disorder → impaired insight → risk behaviour → need for detention.",
+  "q12_detention_required": "Answer the statutory question directly: 'Is there a mental disorder of a nature or degree which warrants the patient's detention in hospital for assessment and/or medical treatment?' Answer Yes or No, then write one brief sentence of justification only — for example: 'Yes. Jordan is suffering from a mental disorder of a nature and degree that warrants detention for further assessment and treatment.' Do NOT include extended clinical reasoning here. The full nature and degree analysis belongs in section 21.",
 
   "q13_treatment": "Cover all of the following: (1) PHARMACOLOGICAL TREATMENT — all medications prescribed, doses, compliance, and any medications offered but declined with reasons; (2) NON-PHARMACOLOGICAL TREATMENT — psychology, OT, substance misuse referrals, or other interventions; (3) ENGAGEMENT — the patient's overall engagement with the treatment programme and attitude towards treatment; (4) PLANNED TREATMENT — what is planned going forward.",
 
@@ -276,11 +276,11 @@ Return a JSON object with exactly these fields. Write in formal clinical prose.
 
   "q18_incidents_self_harm_others": "This is a critical section. Document ALL incidents of harm, threats, or dangerous behaviour from BOTH the admission period and the period prior to admission. Draw from the full narrative notes. Include: suicidal ideation; threats of self-harm; actual self-harm; threatening behaviour towards others; any weapons involvement; risk-driven behaviour such as keeping objects for protection. Do not leave this section incomplete.",
 
-  "q19_property_damage": "Document any property damage or threats. If none, state this clearly. Note any escalating behaviours that stopped short of actual damage but indicate risk.",
+  "q19_property_damage": "State only what is documented. If there is no evidence of property damage or threats to damage property, write exactly: 'There is no evidence of property damage or threats to damage property documented in the available notes.' Do NOT speculate about future risk of property damage or infer risk from other behaviours. This section must be factual only.",
 
   "q20_section2_detention_justified": "This is a critical section. Write four paragraphs of clinical reasoning — do not summarise. HEALTH: explain specifically why detention is necessary for the patient's health — address the nature and severity of the mental disorder, the treatment required, and what would happen to the patient's mental health without hospital treatment. SAFETY: explain why detention is necessary for the patient's safety — reference specific risk events by name (suicidal ideation, self-harm threats, dangerous behaviour), explain the causal chain from mental disorder to risk behaviour, and state why this risk cannot be safely managed in the community. PROTECTION OF OTHERS: address any risk to third parties — if risk exists, describe it specifically; if no risk, state this clearly. WHY COMMUNITY IS INSUFFICIENT: explain directly why the patient cannot be safely managed outside hospital right now — address insight, treatment adherence, absence of enforceable community powers, and what would likely happen if detained were lifted. Do not write generic statements — use the specific facts of this case.",
 
-  "q21_treatment_in_hospital_justified": "Address why inpatient treatment specifically is justified. This applies in all cases including Section 2. Cover: why hospital-based monitoring is needed; what risks are contained by the inpatient setting; why community treatment is not currently sufficient; what the inpatient setting provides that cannot be replicated in the community.",
+  "q21_treatment_in_hospital_justified": "This is a critical section. You MUST address NATURE and DEGREE as two explicitly defined concepts — this is a legal requirement. NATURE OF THE DISORDER: describe the type of mental disorder, its characteristic features, its typical pattern and course, and the features of this patient's disorder that make it dangerous when untreated — specifically impaired insight, tendency to disengage from treatment, and the risk behaviours associated with the disorder. DEGREE OF THE DISORDER: describe the current severity right now — specific active symptoms, current level of behavioural disturbance, current level of insight, functional impairment at this moment, and how this episode compares to baseline. Then explain why these findings — the nature and degree taken together — mean that medical treatment in hospital is justified and necessary. Address: what hospital provides that the community cannot; what risks are contained by the inpatient setting; why community treatment is currently insufficient.",
 
   "q22_risk_if_discharged": "Provide a structured risk assessment with the following headings: RISK TO SELF — include all documented self-harm ideation, threats, and behaviour with causal reasoning about what would happen if discharged; RISK TO OTHERS — document any risk to third parties; RISK OF SELF-NEGLECT AND VULNERABILITY — document any history of poor self-care or functional decline; RISK RELATED TO SUBSTANCE USE — if relevant, describe the relationship between substance use, mental state, and risk; OVERALL RISK SUMMARY — current risk level and key factors that would precipitate deterioration on discharge.",
 
@@ -676,7 +676,7 @@ def render_tribunal(tr_data, patient_name, tribunal_type_key, show_debug):
            ("8. Circumstances of current admission","q8_circumstances_current_admission"),
            ("9. Mental disorder present?","q9_mental_disorder_present"),
            ("10. Diagnosis","q10_diagnosis"),("11. Learning disability?","q11_learning_disability"),
-           ("12. Nature, degree and detention required","q12_detention_required"),
+           ("12. Mental disorder requiring detention?","q12_detention_required"),
            ("13. Treatment available","q13_treatment"),
            ("14. Strengths and positive factors","q14_strengths"),
            ("15. Current progress, behaviour, capacity and insight","q15_current_progress"),
@@ -684,9 +684,9 @@ def render_tribunal(tr_data, patient_name, tribunal_type_key, show_debug):
            ("17. MCA consideration","q17_mca_consideration"),
            ("18. Incidents of harm or threats","q18_incidents_self_harm_others"),
            ("19. Property damage","q19_property_damage"),
-           ("20. Section 2 — is detention justified?","q20_section2_detention_justified"),
-           ("21. Inpatient treatment justified?","q21_treatment_in_hospital_justified"),
-           ("22. Risk if discharged","q22_risk_if_discharged"),
+           ("20. Is detention justified — health, safety or protection of others?","q20_section2_detention_justified"),
+           ("21. Nature, degree and necessity of inpatient treatment","q21_treatment_in_hospital_justified"),
+           ("22. Risk of dangerous behaviour if discharged","q22_risk_if_discharged"),
            ("23. Community risk management","q23_community_risk_management"),
            ("24. Recommendations","q24_recommendations")]
     s_cto=[("2. Capacity for hearing","q2_capacity_hearing"),
