@@ -414,40 +414,43 @@ FULL CLINICAL NOTES (raw text — use for narrative detail, MSE, risk, medicatio
 
 WRITING RULES:
 - Write in natural NHS consultant prose. No bullet points. No EVIDENCE labels.
-- Be concise and GP-friendly — the reader is a GP who needs to understand what happened and what to do next.
-- Use temporal language to show how the clinical picture evolved.
+- The reader is a GP: be clear, specific, and clinically useful. Tell them what happened and what they need to do.
+- Use temporal language — show how the clinical picture evolved over time.
 - Do not invent missing information. If something is not documented, state this clearly.
-- Each section should be one or two focused paragraphs. Do not pad.
+- Each section should be focused and purposeful. Do not pad, but do not compress important clinical detail.
+- Depth where it matters; brevity where it does not.
 
 Return a JSON object with exactly these fields:
 
 {{
   "patient_name": "First name of patient",
 
-  "reason_for_admission": "Write 2-3 sentences describing why the patient was admitted. Include: the presenting symptoms and behaviour; the precipitating factors (e.g. substance use, medication non-adherence, relapse); and the legal basis for admission if detained. Be specific — name the symptoms, the behaviours, and the circumstances.",
+  "reason_for_admission": "2-3 sentences. State the presenting symptoms and behaviours that led to admission; the precipitating factors (e.g. substance use, medication non-adherence, relapse, acute stressor); and the legal basis for admission if detained. Be specific — name the symptoms, the behaviours, and the circumstances. Do not be generic.",
 
-  "clinical_narrative": "Write a clinical narrative of the admission in 3-4 sentences. Cover: what was found on assessment; the diagnosis established or working diagnosis; the key clinical features at presentation; and the initial treatment plan. This is the main explanatory paragraph — it should tell the GP the story of the admission.",
+  "mse_on_admission": "Write the mental state on admission in concise clinical prose covering: appearance and behaviour; speech; mood (subjective and objective); thought form and content (include specific delusions or ideation if documented); perceptions (hallucinations — type and content); insight into illness and need for treatment. This establishes the baseline from which progress will be measured. 3-5 sentences.",
 
-  "progress_on_ward": "Describe how the patient's condition evolved during the admission in 3-4 sentences. Cover: what changed and when; response to treatment; any setbacks or incidents; engagement with the clinical team; and the trajectory towards discharge. Show the journey — not just the endpoint.",
+  "clinical_narrative": "Write the clinical story of the admission in 4-5 sentences. This is the core explanatory section. Cover: the nature of the disorder — what kind of illness this is, its characteristic features, and what typically happens when untreated or when precipitants are present; the degree of the disorder on admission — how severe this episode was, what specific symptoms and behaviours it produced, and how it compared to the patient's baseline; the working or confirmed diagnosis; and the initial treatment approach. Write as a consultant explaining a complex presentation to a GP — not as a checklist.",
 
-  "mse_on_discharge": "Write a brief mental state examination at the point of discharge in natural prose. Cover: appearance and behaviour; speech; mood (subjective and objective); thoughts (form and content — any residual delusions or ideation); perceptions (hallucinations); cognition if relevant; insight. Write as a clinician would document it — concise and factual.",
+  "progress_on_ward": "Write a temporal account of progress in 4-5 sentences using three phases. EARLY IN ADMISSION: describe the mental state, behaviour, and engagement in the first days — include any significant events, refusals, or risks. DURING ADMISSION: describe the trajectory — what improved, what remained problematic, response to medications, engagement with the clinical team, any turning points. LATER IN ADMISSION: describe the picture in the days before discharge — current mental state, behaviour on the ward, insight, and what led to the decision to discharge. Do not compress all three phases into a single generic statement.",
 
-  "diagnosis": "State the discharge diagnosis. Use ICD-10 terminology where possible. If there is diagnostic uncertainty, state this. One to two sentences only.",
+  "mse_on_discharge": "Write the mental state at discharge in concise clinical prose. Cover: appearance and behaviour; speech; mood; thought form and content — specifically note whether delusions or ideation have resolved, persisted, or partially resolved; perceptions — note whether hallucinations have resolved or persist; insight at discharge — does the patient accept the diagnosis and need for treatment. 3-5 sentences. Write as a clinician would document it.",
 
-  "risk_and_crisis_plan": "Summarise the risk picture at discharge and the crisis plan in 3-4 sentences. Cover: current risk to self and others; any specific triggers or warning signs; what the patient should do if they deteriorate; who to contact in a crisis; and any safety netting advice given. Be specific — name the risks and name the plan.",
+  "diagnosis": "State the discharge diagnosis using ICD-10 terminology where possible. If diagnostic uncertainty remains (e.g. substance-induced vs primary psychotic disorder), state this clearly and briefly explain the basis for uncertainty. One to three sentences only.",
 
-  "discharge_medications": "List all medications at discharge. For each: name, dose, route, frequency, and any instructions. If there are changes from admission medications, note them. If the patient declined any medication, state this. Write as a medication list in prose: e.g. 'Mirtazapine 30mg oral nocte, Olanzapine 10mg oral nocte...'",
+  "risk_and_crisis_plan": "3-4 sentences. State the current risk level at discharge to self and others. Include conditional risk where relevant — e.g. risk of deterioration and self-harm if substance use resumes, or if follow-up is not maintained. State the specific warning signs the GP and patient should watch for. State the crisis plan: what the patient should do if they deteriorate, who to contact, and what emergency options exist. Be specific — generic statements are not useful here.",
 
-  "follow_up_and_gp_actions": "State the follow-up plan clearly in 3-4 sentences. Cover: who will follow up and when (CMHT, EIT, outpatient clinic); any referrals made; any pending investigations; and specific actions required from the GP — including medication monitoring, blood tests, DVLA if relevant, safeguarding if relevant. Be explicit about what the GP needs to do.",
+  "discharge_medications": "Write the medication list in four clearly labelled parts. CONTINUED: medications that were already prescribed and are continuing unchanged. NEWLY STARTED: medications initiated during this admission, with dose, route, frequency, and reason for starting. REFUSED: any medications offered but declined by the patient, with brief reason if documented. PRN: any PRN medications prescribed at discharge with indication. If a section is not applicable, state 'None'. Use format: Drug name dose route frequency — e.g. Mirtazapine 30mg oral nocte.",
 
-  "confidence_note": "List any sections where information was limited in the notes and clinician review is especially important."
+  "follow_up_and_gp_actions": "3-4 sentences. State the follow-up arrangements: who is following up (CMHT, EIT, outpatient clinic), approximate timeframe, and any referrals made during admission. Then state clearly and specifically what action is required from the GP — including any medication monitoring, blood tests (e.g. lithium levels, metabolic monitoring for antipsychotics), physical health reviews, DVLA notification if relevant, or safeguarding actions. If the GP has no specific actions required, state this explicitly.",
+
+  "confidence_note": "List any sections where the available notes provided limited information and clinician review or completion is most important."
 }}
 
 Critical rules:
-- Never leave a field blank — either populate it from the notes or state clearly what is not documented
-- Do not invent follow-up plans, referrals, or medications not present in the notes
-- The tone should be that of a consultant writing to a GP — professional, clear, and helpful
-- Discharge medications must reflect the notes accurately — do not guess doses or routes"""
+- Never leave a field blank — populate from the notes or state clearly what is not documented
+- Do not invent medications, referrals, follow-up plans, or clinical findings not present in the notes
+- Discharge medications must reflect the notes exactly — do not guess doses, routes, or changes
+- The tone throughout should be that of a consultant writing to a GP — authoritative, clear, and clinically useful"""
 
 
 def generate_discharge(extracted_records, raw_notes, api_key):
@@ -472,6 +475,7 @@ def render_discharge(ds_data, patient_name, show_debug):
 
     fields = [
         ("Reason for admission",            "reason_for_admission"),
+        ("Mental state on admission",       "mse_on_admission"),
         ("Clinical narrative",              "clinical_narrative"),
         ("Progress on ward",                "progress_on_ward"),
         ("Mental state on discharge",       "mse_on_discharge"),
