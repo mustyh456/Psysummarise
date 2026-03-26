@@ -455,6 +455,117 @@ Critical rules:
 - The tone throughout should be that of a consultant writing to a GP — authoritative, clear, and clinically useful"""
 
 
+CLINICAL_SUMMARY_SYSTEM = """You are an expert consultant psychiatrist writing a concise clinical summary.
+You write in natural NHS clinical prose — clear, focused, and clinically useful.
+You only use information explicitly present in the notes provided.
+You never fabricate clinical details.
+You output only valid JSON."""
+
+CLINICAL_SUMMARY_PROMPT = """You are preparing a recent clinical summary from multiple psychiatric documents.
+
+You have two sources of information. Use BOTH:
+
+STRUCTURED EXTRACTED DATA:
+{extracted_data}
+
+FULL CLINICAL NOTES:
+{raw_notes}
+
+OUTPUT MODE: {output_mode}
+
+WRITING RULES:
+- Write in natural NHS clinical prose. No bullet points. No EVIDENCE labels.
+- Focus on change over time — not static description. Use temporal connectors: "Initially...", "Subsequently...", "More recently...", "At the time of most recent review..."
+- Do not invent missing information. If something is not documented, state this clearly.
+- Prioritise clinical relevance. Do not pad.
+- If output mode is INTERIM SUMMARY: be concise and easy to scan — a clinician reading before seeing the patient.
+- If output mode is TRANSFER OF CARE: be slightly more formal, explicit about risks and responsibilities, clear about what the receiving team needs to know and do.
+
+Return a JSON object with exactly these fields:
+
+{{
+  "patient_name": "First name of patient",
+  "output_mode": "{output_mode}",
+
+  "reason_for_involvement": "2-3 sentences. Why is this patient currently under psychiatric care? State the current context — inpatient admission, crisis presentation, community review — and the primary reason for involvement. Include diagnosis or working diagnosis if established.",
+
+  "key_events_and_progression": "Write a chronological account of recent clinical events in 4-5 sentences. Use temporal connectors throughout — 'Initially...', 'Subsequently...', 'More recently...', 'At the time of most recent review...'. Cover admissions, crises, significant behavioural changes, treatment decisions, and the overall trajectory. Show how the clinical picture has evolved — do not list events without linking them.",
+
+  "current_presentation": "3-4 sentences. Describe the current mental state and presentation: symptoms present now; level of insight; engagement with staff or services; and current functional level. If output mode is TRANSFER OF CARE, include any specific observations relevant to managing this patient safely.",
+
+  "risk_update": "3-4 sentences. State the current risk to self and others based on the most recent documentation. Note any recent incidents. Include conditional risks where relevant — e.g. 'There remains a risk of deterioration, particularly if substance use resumes' or 'Risk of disengagement from services if not actively followed up'. If output mode is TRANSFER OF CARE, be explicit about which risks the receiving team needs to actively monitor.",
+
+  "medication_update": "2-3 sentences in prose. State the current medications by name, dose, and frequency. Note any recent changes — medications started, stopped, or changed during this period. Note adherence and any refusals. Write as natural prose, not a list.",
+
+  "legal_and_service_status": "1-2 sentences. State the current legal status under the MHA if applicable. State which team or service is currently responsible for the patient's care — inpatient team, CMHT, CRHT, EIT, or other. If output mode is TRANSFER OF CARE, explicitly state which team is handing over and which team is receiving.",
+
+  "current_plan_and_actions": "3-4 sentences. What is currently planned? Cover: immediate next steps; follow-up arrangements; any outstanding clinical decisions or investigations; and any actions that remain to be completed. If output mode is TRANSFER OF CARE, frame these as specific responsibilities for the receiving team — be explicit about what needs to happen and by whom.",
+
+  "confidence_note": "List any sections where the available notes provided limited information and clinician review is especially important."
+}}
+
+Critical rules:
+- Never leave a field blank — populate from the notes or state clearly what is not documented
+- Do not invent events, medications, or plans not present in the notes
+- Calibrate detail and formality to the output mode — interim summaries should be tighter; transfer of care summaries should be more explicit about risk and responsibility"""
+
+
+def generate_clinical_summary(extracted_records, raw_notes, output_mode, api_key):
+    client = OpenAI(api_key=api_key)
+    raw_text = "\n\n---\n\n".join(f"NOTE {i+1}:\n{n}" for i,n in enumerate(raw_notes))
+    prompt = CLINICAL_SUMMARY_PROMPT.format(
+        extracted_data=json.dumps(extracted_records, indent=2, ensure_ascii=False),
+        raw_notes=raw_text,
+        output_mode=output_mode
+    )
+    response = client.chat.completions.create(
+        model="gpt-4o", temperature=0.0,
+        messages=[{"role":"system","content":CLINICAL_SUMMARY_SYSTEM},{"role":"user","content":prompt}]
+    )
+    output = response.choices[0].message.content.strip()
+    if output.startswith("```"):
+        output = "\n".join(l for l in output.splitlines() if not l.strip().startswith("```"))
+    return json.loads(output)
+
+
+def render_clinical_summary_output(cs_data, patient_name, output_mode, show_debug):
+    mode_label = "Interim Summary" if output_mode == "INTERIM SUMMARY" else "Transfer of Care"
+    st.warning("⚠️ AI-assisted draft. Must be reviewed and approved by the responsible clinician before use.")
+    st.caption(f"Output mode: **{mode_label}**")
+
+    fields = [
+        ("Reason for current involvement",      "reason_for_involvement"),
+        ("Key events and progression",          "key_events_and_progression"),
+        ("Current presentation",                "current_presentation"),
+        ("Risk update",                         "risk_update"),
+        ("Medication update",                   "medication_update"),
+        ("Legal and service status",            "legal_and_service_status"),
+        ("Current plan and outstanding actions","current_plan_and_actions"),
+    ]
+
+    edits = {}
+    for label, key in fields:
+        val = cs_data.get(key) or "Not documented in available notes — clinician to complete"
+        edits[key] = st.text_area(label, value=val, height=120, key=f"cs_{key}")
+
+    if show_debug and cs_data.get("confidence_note"):
+        with st.expander("AI confidence note"):
+            st.info(cs_data["confidence_note"])
+
+    st.divider()
+    plain = f"RECENT CLINICAL SUMMARY — {mode_label.upper()}\nPatient: {patient_name}\n\n"
+    for label, key in fields:
+        plain += f"{label.upper()}\n{edits.get(key, '')}\n\n"
+    plain += "---\nAI-ASSISTED DRAFT. Must be reviewed and signed by the responsible clinician before use.\nGenerated by PsySummarise (research prototype). Not validated for clinical use.\n"
+
+    st.download_button(
+        f"⬇ Download {mode_label} (.txt)",
+        data=plain,
+        file_name=f"ClinicalSummary_{mode_label.replace(' ','_')}_{patient_name}.txt",
+        mime="text/plain"
+    )
+
+
 def generate_discharge(extracted_records, raw_notes, api_key):
     client = OpenAI(api_key=api_key)
     raw_text = "\n\n---\n\n".join(f"NOTE {i+1}:\n{n}" for i,n in enumerate(raw_notes))
@@ -910,7 +1021,7 @@ st.title("\U0001f9e0 PsySummarise")
 st.caption("Structured extraction from psychiatric documentation \u00b7 Research prototype \u00b7 Not validated for clinical use")
 st.divider()
 
-for key in ["s3_notes","s3_extracted","tr_notes","tr_extracted","ds_notes","ds_extracted"]:
+for key in ["s3_notes","s3_extracted","tr_notes","tr_extracted","ds_notes","ds_extracted","cs_notes","cs_extracted"]:
     if key not in st.session_state: st.session_state[key]=[]
 
 with st.sidebar:
@@ -922,10 +1033,11 @@ with st.sidebar:
     st.divider()
     st.caption("PsySummarise uses GPT-4o. Research prototype. Not validated for clinical use.")
 
-tab1,tab2,tab3,tab4=st.tabs(["\U0001f4c4 Single note extraction",
-                              "\U0001f4cb Section 3 recommendation",
-                              "\u2696 Tribunal report",
-                              "\U0001f4cb Discharge summary"])
+tab1,tab2,tab3,tab4,tab5=st.tabs(["\U0001f4c4 Single note extraction",
+                                   "\U0001f4cb Section 3 recommendation",
+                                   "\u2696 Tribunal report",
+                                   "\U0001f4cb Discharge summary",
+                                   "\U0001f4cb Recent clinical summary"])
 
 with tab1:
     note_text=note_input_widget("t1") if "note_input_widget" in dir() else st.text_area("Paste note",height=180,key="t1_paste")
@@ -1024,5 +1136,36 @@ with tab4:
                         d_tab,src_tab=st.tabs(["Draft summary","Source data"])
                         with d_tab: render_discharge(ds_result,patient_name,show_debug)
                         with src_tab: st.json(st.session_state.ds_extracted)
+                    except Exception as e: st.error(f"Error: {e}")
+    else: st.info("Add at least one note above to begin.")
+
+with tab5:
+    st.markdown("### Recent clinical summary")
+    st.caption("Add clinical notes to generate an interim summary or transfer of care handover.")
+    output_mode = st.radio(
+        "Output mode",
+        ["Interim summary (pre-clinic / pre-review)", "Transfer of care (handover between teams)"],
+        horizontal=True, key="cs_mode"
+    )
+    mode_key = "INTERIM SUMMARY" if "Interim" in output_mode else "TRANSFER OF CARE"
+    add_notes_widget("cs","cs_notes","cs_extracted",api_key)
+    if st.session_state.cs_extracted:
+        st.divider()
+        if st.button("Generate clinical summary \u2192", key="gen_cs"):
+            if not api_key: st.error("Please enter your OpenAI API key in the sidebar.")
+            else:
+                with st.spinner("Generating clinical summary..."):
+                    try:
+                        cs_result = generate_clinical_summary(
+                            st.session_state.cs_extracted,
+                            st.session_state.cs_notes,
+                            mode_key, api_key
+                        )
+                        st.success("Draft generated. Review all sections carefully.")
+                        st.divider()
+                        patient_name = cs_result.get("patient_name") or st.session_state.cs_extracted[0].get("patient_id","Patient")
+                        d_tab, src_tab = st.tabs(["Draft summary","Source data"])
+                        with d_tab: render_clinical_summary_output(cs_result, patient_name, mode_key, show_debug)
+                        with src_tab: st.json(st.session_state.cs_extracted)
                     except Exception as e: st.error(f"Error: {e}")
     else: st.info("Add at least one note above to begin.")
