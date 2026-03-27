@@ -1145,7 +1145,7 @@ with tab5:
     output_mode = st.radio(
         "Output mode",
         ["Interim summary (pre-clinic / pre-review)", "Transfer of care (handover between teams)"],
-        horizontal=True, key="cs_mode"
+        horizontal=True, key="rcs_output_mode"
     )
     mode_key = "INTERIM SUMMARY" if "Interim" in output_mode else "TRANSFER OF CARE"
     add_notes_widget("cs","cs_notes","cs_extracted",api_key)
