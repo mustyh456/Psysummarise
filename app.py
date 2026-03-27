@@ -680,7 +680,7 @@ Return a JSON object with exactly these fields:
 
   "impression": "Write a clear clinical formulation including the working diagnosis and contributing factors. State the diagnosis confidently with brief reasoning. Address any diagnostic uncertainty honestly. Comment on predisposing, precipitating, and perpetuating factors if these can be identified from the notes. 3-4 sentences.",
 
-  "plan": "Write a clear, actionable plan in prose. Cover: legal status if known; immediate management; medication approach; monitoring required; referrals made or planned; and next steps. Write as a clinician documenting a plan — not a checklist. 3-5 sentences.",
+  "plan": "Write the plan as a numbered list. Each item should be a single clear, actionable clinical step — one line each, written in clinical NHS style. Number from 1. Cover: legal status if known; immediate management steps; medication approach; monitoring required; referrals made or planned; and any next steps. Example format: '1. Continue under Section 2 of the Mental Health Act pending further review. 2. Commence Olanzapine 5mg oral nocte...' Do not write this section as prose. Only this section should be a numbered list.",
 
   "confidence_note": "List any sections where the available notes provided limited information and clinical review or completion is especially important."
 }}
@@ -1134,6 +1134,8 @@ st.divider()
 
 for key in ["s3_notes","s3_extracted","tr_notes","tr_extracted","ds_notes","ds_extracted","cs_notes","cs_extracted","main_notes","main_extracted"]:
     if key not in st.session_state: st.session_state[key]=[]
+if "ck_result" not in st.session_state: st.session_state.ck_result = None
+if "ck_patient_name" not in st.session_state: st.session_state.ck_patient_name = ""
 
 with st.sidebar:
     st.markdown("### \u2699 Settings")
@@ -1225,13 +1227,25 @@ if st.session_state.main_extracted:
                 with st.spinner("Generating clerking summary..."):
                     try:
                         result = generate_clerking(extracted, notes, api_key)
-                        patient_name = result.get("patient_name") or patient_name
-                        st.success("Draft generated. Review all sections carefully.")
-                        st.divider()
-                        d_tab, src_tab = st.tabs(["Draft clerking","Source data"])
-                        with d_tab: render_clerking(result, patient_name, show_debug)
-                        with src_tab: st.json(extracted)
+                        st.session_state.ck_result = result
+                        st.session_state.ck_patient_name = result.get("patient_name") or patient_name
                     except Exception as e: st.error(f"Error: {e}")
+
+    # ── Render persisted clerking output ──────────────────────────────────────
+    if output_type == "Clerking summary" and st.session_state.ck_result:
+        st.success("Draft generated. Review and edit all sections before downloading.")
+        st.divider()
+        col_reset, _ = st.columns([1, 4])
+        with col_reset:
+            if st.button("🗑 Clear clerking", key="ck_clear"):
+                st.session_state.ck_result = None
+                st.session_state.ck_patient_name = ""
+                st.rerun()
+        d_tab, src_tab = st.tabs(["Draft clerking", "Source data"])
+        with d_tab:
+            render_clerking(st.session_state.ck_result, st.session_state.ck_patient_name, show_debug)
+        with src_tab:
+            st.json(st.session_state.main_extracted)
 
 else:
     st.info("\u2191 Add at least one clinical note above to continue.")
