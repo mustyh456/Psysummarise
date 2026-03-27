@@ -637,6 +637,116 @@ def compute_risk(extracted, notes, stage, api_key):
     if output.startswith("```"): output = "\n".join(l for l in output.splitlines() if not l.strip().startswith("```"))
     return json.loads(output)
 
+CLERKING_SYSTEM = """You are an expert registrar-level psychiatrist producing a structured clerking summary.
+You write in natural NHS clinical prose — clear, confident, and clinically reasoned.
+You only use information explicitly present in the notes provided.
+You never fabricate clinical details.
+You output only valid JSON."""
+
+CLERKING_PROMPT = """You are producing a structured clerking summary from the clinical notes below.
+
+FULL CLINICAL NOTES:
+{raw_notes}
+
+OPTIONAL STRUCTURED DATA (use to supplement, not replace, the raw notes):
+{extracted_data}
+
+CRITICAL WRITING RULES:
+- Write in natural NHS clinical prose throughout. Do not use bullet points or checklists anywhere.
+- Do not fabricate missing information. If a section has limited data, keep it brief.
+- Only include details clearly supported by the notes.
+- Write like a registrar-level assessment — confident, clinically reasoned, narrative.
+- The clerking should tell a coherent clinical story of why this patient is presenting now.
+- Prioritise clarity, clinical reasoning, and narrative flow over completeness.
+
+Return a JSON object with exactly these fields:
+
+{{
+  "patient_name": "First name of patient, or 'Not documented' if absent",
+
+  "presenting_complaint_and_hpc": "Describe the reason for presentation, key symptoms, timeline of deterioration, relevant risk behaviours, and why the patient is presenting now. This is the core narrative section — it must read as a clear, coherent clinical story, not a list. Use temporal connectors to show how the presentation evolved. 4-6 sentences.",
+
+  "past_psychiatric_history": "Summarise any known diagnoses, previous admissions or crises, history of self-harm, and prior treatments if documented in the notes. Keep concise unless the notes contain clear detail. If not documented, write: No previous psychiatric history documented in the available notes.",
+
+  "relevant_background": "Include relevant social context, substance use history, or forensic history only if clearly documented. Do not expand or speculate. If not clearly documented, omit this field by writing: Not documented in the available notes.",
+
+  "past_medical_history": "Include relevant medical conditions impacting mental state only if mentioned in the notes. If not mentioned, write: No relevant medical history documented.",
+
+  "medications": "Describe current medications, recent changes, and adherence in natural prose. Use connecting language: 'He was continued on...', 'During this admission he was started on...', 'He declined antipsychotic medication...'. Do not use a list or table format. If no medication information is documented, state this clearly.",
+
+  "mental_state_examination": "Write a descriptive MSE in natural clinical prose covering: appearance and behaviour; speech; mood (subjective and objective); affect; thought form and content (include specific content if documented — delusions, ideation, obsessions); perception (hallucinations — type, content, and response); cognition if assessed; and insight. Write as a clinician would document it — concise, descriptive, and factual. Do not use sub-headings or bullet points.",
+
+  "risk_assessment": "Write a clinically grounded risk formulation in prose. Cover risk to self, risk to others, self-neglect, and vulnerability where there is evidence from the notes. Base this on actual documented events and the current clinical picture — not generic statements. Include conditional risks where relevant (e.g. risk if substance use resumes, risk if discharged prematurely). 3-5 sentences.",
+
+  "impression": "Write a clear clinical formulation including the working diagnosis and contributing factors. State the diagnosis confidently with brief reasoning. Address any diagnostic uncertainty honestly. Comment on predisposing, precipitating, and perpetuating factors if these can be identified from the notes. 3-4 sentences.",
+
+  "plan": "Write a clear, actionable plan in prose. Cover: legal status if known; immediate management; medication approach; monitoring required; referrals made or planned; and next steps. Write as a clinician documenting a plan — not a checklist. 3-5 sentences.",
+
+  "confidence_note": "List any sections where the available notes provided limited information and clinical review or completion is especially important."
+}}
+
+Critical rules:
+- Never leave a field blank — populate from the notes or state clearly what is not documented
+- Do not invent diagnoses, events, medications, or plans not present in the notes
+- Write every section in prose — no bullet points anywhere in the output
+- The impression and plan must reflect clinical reasoning, not just restate the history"""
+
+
+def generate_clerking(extracted_records, raw_notes, api_key):
+    client = OpenAI(api_key=api_key)
+    raw_text = "\n\n---\n\n".join(f"NOTE {i+1}:\n{n}" for i,n in enumerate(raw_notes))
+    prompt = CLERKING_PROMPT.format(
+        extracted_data=json.dumps(extracted_records, indent=2, ensure_ascii=False),
+        raw_notes=raw_text
+    )
+    response = client.chat.completions.create(
+        model="gpt-4o", temperature=0.0, max_tokens=3000,
+        messages=[{"role":"system","content":CLERKING_SYSTEM},{"role":"user","content":prompt}]
+    )
+    output = response.choices[0].message.content.strip()
+    if output.startswith("```"):
+        output = "\n".join(l for l in output.splitlines() if not l.strip().startswith("```"))
+    return json.loads(output)
+
+
+def render_clerking(ck_data, patient_name, show_debug):
+    st.warning("⚠️ AI-assisted draft. Must be reviewed and approved by the responsible clinician before use.")
+
+    fields = [
+        ("Presenting complaint and history of presenting complaint", "presenting_complaint_and_hpc"),
+        ("Past psychiatric history",                                 "past_psychiatric_history"),
+        ("Relevant background",                                      "relevant_background"),
+        ("Past medical history",                                     "past_medical_history"),
+        ("Medications",                                              "medications"),
+        ("Mental state examination",                                 "mental_state_examination"),
+        ("Risk assessment",                                          "risk_assessment"),
+        ("Impression",                                               "impression"),
+        ("Plan",                                                     "plan"),
+    ]
+
+    edits = {}
+    for label, key in fields:
+        val = ck_data.get(key) or "Not documented in available notes — clinician to complete"
+        edits[key] = st.text_area(label, value=val, height=130, key=f"ck_{key}")
+
+    if show_debug and ck_data.get("confidence_note"):
+        with st.expander("AI confidence note"):
+            st.info(ck_data["confidence_note"])
+
+    st.divider()
+    plain = f"CLERKING SUMMARY\nPatient: {patient_name}\n\n"
+    for label, key in fields:
+        plain += f"{label.upper()}\n{edits.get(key,'')}\n\n"
+    plain += "---\nAI-ASSISTED DRAFT. Must be reviewed and signed by the responsible clinician.\nGenerated by PsySummarise (research prototype). Not validated for clinical use.\n"
+
+    st.download_button(
+        "⬇ Download clerking summary (.txt)",
+        data=plain,
+        file_name=f"Clerking_{patient_name}.txt",
+        mime="text/plain"
+    )
+
+
 def generate_s3(extracted_records, raw_notes, risk_assessment, api_key):
     client = OpenAI(api_key=api_key)
     raw_text = "\n\n---\n\n".join(f"NOTE {i+1}:\n{n}" for i,n in enumerate(raw_notes))
@@ -1046,7 +1156,7 @@ if st.session_state.main_extracted:
 
     output_type = st.radio(
         "What would you like to generate?",
-        ["Tribunal report", "Discharge summary", "Interim summary", "Transfer of care"],
+        ["Tribunal report", "Discharge summary", "Interim summary", "Transfer of care", "Clerking summary"],
         horizontal=True, key="main_output_type"
     )
 
@@ -1108,6 +1218,18 @@ if st.session_state.main_extracted:
                         st.divider()
                         d_tab, src_tab = st.tabs(["Draft summary","Source data"])
                         with d_tab: render_clinical_summary_output(result, patient_name, mode_key, show_debug)
+                        with src_tab: st.json(extracted)
+                    except Exception as e: st.error(f"Error: {e}")
+
+            elif output_type == "Clerking summary":
+                with st.spinner("Generating clerking summary..."):
+                    try:
+                        result = generate_clerking(extracted, notes, api_key)
+                        patient_name = result.get("patient_name") or patient_name
+                        st.success("Draft generated. Review all sections carefully.")
+                        st.divider()
+                        d_tab, src_tab = st.tabs(["Draft clerking","Source data"])
+                        with d_tab: render_clerking(result, patient_name, show_debug)
                         with src_tab: st.json(extracted)
                     except Exception as e: st.error(f"Error: {e}")
 
