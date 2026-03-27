@@ -385,6 +385,7 @@ def extract_note(note_text, api_key):
     response = client.chat.completions.create(
         model="gpt-4o",
         temperature=0.0,
+        max_tokens=2000,
         messages=[
             {"role": "system", "content": SYSTEM_PROMPT},
             {"role": "user", "content": prompt}
@@ -519,7 +520,7 @@ def generate_clinical_summary(extracted_records, raw_notes, output_mode, api_key
         output_mode=output_mode
     )
     response = client.chat.completions.create(
-        model="gpt-4o", temperature=0.0,
+        model="gpt-4o", temperature=0.0, max_tokens=3000,
         messages=[{"role":"system","content":CLINICAL_SUMMARY_SYSTEM},{"role":"user","content":prompt}]
     )
     output = response.choices[0].message.content.strip()
@@ -574,7 +575,7 @@ def generate_discharge(extracted_records, raw_notes, api_key):
         raw_notes=raw_text
     )
     response = client.chat.completions.create(
-        model="gpt-4o", temperature=0.0,
+        model="gpt-4o", temperature=0.0, max_tokens=3000,
         messages=[{"role":"system","content":DISCHARGE_SYSTEM},{"role":"user","content":prompt}]
     )
     output = response.choices[0].message.content.strip()
@@ -630,7 +631,7 @@ def compute_risk(extracted, notes, stage, api_key):
     prompt = RISK_ENGINE_PROMPT.format(
         extracted_data=json.dumps(extracted, indent=2, ensure_ascii=False),
         raw_notes=raw_text, admission_stage=stage)
-    response = client.chat.completions.create(model="gpt-4o", temperature=0.0,
+    response = client.chat.completions.create(model="gpt-4o", temperature=0.0, max_tokens=2000,
         messages=[{"role":"system","content":SYSTEM_PROMPT},{"role":"user","content":prompt}])
     output = response.choices[0].message.content.strip()
     if output.startswith("```"): output = "\n".join(l for l in output.splitlines() if not l.strip().startswith("```"))
@@ -645,7 +646,7 @@ def generate_s3(extracted_records, raw_notes, risk_assessment, api_key):
         raw_notes=raw_text
     )
     response = client.chat.completions.create(
-        model="gpt-4o", temperature=0.0,
+        model="gpt-4o", temperature=0.0, max_tokens=3000,
         messages=[{"role":"system","content":S3_SYSTEM},{"role":"user","content":prompt}]
     )
     output = response.choices[0].message.content.strip()
@@ -664,7 +665,7 @@ def generate_tribunal(extracted_records, raw_notes, risk_assessment, tribunal_ty
         admission_stage=stage
     )
     response = client.chat.completions.create(
-        model="gpt-4o", temperature=0.0,
+        model="gpt-4o", temperature=0.0, max_tokens=4000,
         messages=[{"role":"system","content":TRIBUNAL_SYSTEM},{"role":"user","content":prompt}]
     )
     output = response.choices[0].message.content.strip()
