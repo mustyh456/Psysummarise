@@ -1022,7 +1022,7 @@ st.title("\U0001f9e0 PsySummarise")
 st.caption("Structured extraction from psychiatric documentation \u00b7 Research prototype \u00b7 Not validated for clinical use")
 st.divider()
 
-for key in ["s3_notes","s3_extracted","tr_notes","tr_extracted","ds_notes","ds_extracted","cs_notes","cs_extracted"]:
+for key in ["s3_notes","s3_extracted","tr_notes","tr_extracted","ds_notes","ds_extracted","cs_notes","cs_extracted","main_notes","main_extracted"]:
     if key not in st.session_state: st.session_state[key]=[]
 
 with st.sidebar:
@@ -1039,6 +1039,85 @@ tab1,tab2,tab3,tab4,tab5=st.tabs(["\U0001f4c4 Single note extraction",
                                    "\u2696 Tribunal report",
                                    "\U0001f4cb Discharge summary",
                                    "\U0001f4cb Recent clinical summary"])
+
+# ── Unified workflow ──────────────────────────────────────────────────────────
+st.markdown("## Generate a document")
+st.caption("Upload your clinical notes once, then choose what to generate.")
+
+add_notes_widget("main","main_notes","main_extracted",api_key)
+
+if st.session_state.main_extracted:
+    st.divider()
+
+    output_type = st.radio(
+        "What would you like to generate?",
+        ["Tribunal report", "Discharge summary", "Interim summary", "Transfer of care"],
+        horizontal=True, key="main_output_type"
+    )
+
+    # Tribunal-specific options
+    if output_type == "Tribunal report":
+        main_tribunal_type = st.radio(
+            "Tribunal type",
+            ["Inpatient detention appeal (Section 2 / Section 3)", "CTO appeal"],
+            horizontal=True, key="main_tribunal_type"
+        )
+        main_tribunal_key = "Inpatient detention appeal" if "Inpatient" in main_tribunal_type else "CTO appeal"
+        main_stage = stage_selector("main")
+
+    if st.button("Generate \u2192", key="main_generate"):
+        if not api_key:
+            st.error("Please enter your OpenAI API key in the sidebar.")
+        else:
+            extracted = st.session_state.main_extracted
+            notes    = st.session_state.main_notes
+            patient_name = extracted[0].get("patient_id","Patient")
+
+            if output_type == "Tribunal report":
+                main_risk = {}
+                with st.spinner("Computing risk assessment..."):
+                    try: main_risk = compute_risk(extracted, notes, main_stage, api_key)
+                    except Exception as e: st.warning(f"Risk assessment failed: {e}")
+                with st.spinner("Generating tribunal report — this may take 30–60 seconds..."):
+                    try:
+                        result = generate_tribunal(extracted, notes, main_risk, main_tribunal_key, main_stage, api_key)
+                        patient_name = result.get("patient_name") or patient_name
+                        st.success("Draft generated. Review all sections carefully.")
+                        st.divider()
+                        r_tab, d_tab, src_tab = st.tabs(["Risk assessment","Draft report","Source data"])
+                        with r_tab: render_risk(main_risk, show_debug, len(extracted))
+                        with d_tab: render_tribunal(result, patient_name, main_tribunal_key, show_debug)
+                        with src_tab: st.json(extracted)
+                    except Exception as e: st.error(f"Error: {e}")
+
+            elif output_type == "Discharge summary":
+                with st.spinner("Generating discharge summary — this may take 20–40 seconds..."):
+                    try:
+                        result = generate_discharge(extracted, notes, api_key)
+                        patient_name = result.get("patient_name") or patient_name
+                        st.success("Draft generated. Review all sections carefully.")
+                        st.divider()
+                        d_tab, src_tab = st.tabs(["Draft summary","Source data"])
+                        with d_tab: render_discharge(result, patient_name, show_debug)
+                        with src_tab: st.json(extracted)
+                    except Exception as e: st.error(f"Error: {e}")
+
+            elif output_type in ("Interim summary", "Transfer of care"):
+                mode_key = "INTERIM SUMMARY" if output_type == "Interim summary" else "TRANSFER OF CARE"
+                with st.spinner("Generating clinical summary..."):
+                    try:
+                        result = generate_clinical_summary(extracted, notes, mode_key, api_key)
+                        patient_name = result.get("patient_name") or patient_name
+                        st.success("Draft generated. Review all sections carefully.")
+                        st.divider()
+                        d_tab, src_tab = st.tabs(["Draft summary","Source data"])
+                        with d_tab: render_clinical_summary_output(result, patient_name, mode_key, show_debug)
+                        with src_tab: st.json(extracted)
+                    except Exception as e: st.error(f"Error: {e}")
+
+st.divider()
+st.markdown("##### Advanced — individual tools")
+st.caption("The tabs below give access to individual tools with separate note uploads.")
 
 with tab1:
     note_text=note_input_widget("t1") if "note_input_widget" in dir() else st.text_area("Paste note",height=180,key="t1_paste")
