@@ -747,6 +747,131 @@ def render_clerking(ck_data, patient_name, show_debug):
     )
 
 
+MANAGERS_SYSTEM = """You are a consultant psychiatrist preparing a clinical report for a Hospital Managers hearing.
+You write in clear, natural NHS clinical prose — registrar to consultant level.
+The panel hearing this report is non-clinical. Write clearly enough for them to understand, but do not simplify clinical reasoning.
+You only use information explicitly present in the notes provided.
+You never fabricate clinical details.
+You output only valid JSON."""
+
+MANAGERS_PROMPT = """You are preparing a clinical report for a Hospital Managers hearing.
+The Managers panel will decide whether this patient's detention under the Mental Health Act should continue.
+
+This report follows the same structure as a Mental Health Tribunal report, but with less legal framing and stronger clinical reasoning.
+
+You have three sources of information. Use ALL of them:
+
+STRUCTURED EXTRACTED DATA:
+{extracted_data}
+
+FULL CLINICAL NOTES (raw text):
+{raw_notes}
+
+PRE-COMPUTED RISK ASSESSMENT:
+{risk_assessment}
+
+ADMISSION STAGE: {admission_stage}
+
+CRITICAL WRITING RULES:
+- Write in natural NHS clinical prose. No bullet points except in the recommendation (q24).
+- Every section must show clinical reasoning — not just description. Show WHY, not just WHAT.
+- The panel's question is: "Should this person remain detained?" Answer it directly in sections 20, 21, 23, and 24.
+- Sections 21, 22, and 24 are the most important. Write them with the most care and depth.
+- Do not use legal jargon. Explain clinical concepts in plain but professional language.
+- Do not use EVIDENCE: labels or bullet points anywhere except the recommendation.
+- Where the patient has improved, acknowledge it — then explain why discharge remains premature.
+
+MOST IMPORTANT REQUIREMENT — NATURE AND DEGREE:
+Every time you address whether detention is justified, you must explicitly explain:
+1. The NATURE of the disorder: what kind of illness this is, how it typically behaves, what happens when untreated, and the features (e.g. poor insight, relapsing course, risk behaviours) that make this disorder particularly relevant to detention.
+2. The DEGREE of the disorder right now: current active symptoms, current severity, current insight, current functional impairment — how bad is it today compared to baseline?
+These two concepts must appear explicitly and clearly in sections 12, 21, and 24.
+
+DECISION REQUIREMENT:
+Section 24 must include a clear decision: does the patient continue to meet criteria for detention? Yes or No. Then explain why with specific clinical reasoning.
+
+Return a JSON object with exactly these fields. Use the same field names as the inpatient tribunal report:
+
+{{
+  "patient_name": "First name of patient",
+  "rc_name": "Not documented — clinician to complete",
+  "tribunal_type": "Managers hearing",
+
+  "q3_factors_affecting_hearing": "Are there any factors — intellectual, physical, sensory, or communication — that would affect this patient's ability to participate in the hearing? This is not about mental state. If none documented, write: There are no known factors that would affect the patient's ability to participate in the hearing.",
+
+  "q4_adjustments": "Are any practical adjustments needed for the hearing — interpreter, hearing loop, accessible format? If none needed write: No adjustments are required.",
+
+  "q5_forensic_history": "State any formal forensic history. If none, say so clearly. Then note any risk-relevant behaviours documented in the notes even without formal proceedings.",
+
+  "q6_previous_mh_involvement": "Summarise all previous mental health involvement: previous admissions with dates, previous community team input, and any history of mental health difficulties before this admission. If this is the first admission, say so.",
+
+  "q7_reasons_previous_admissions": "Give reasons for any previous admissions. If first admission write: This is the patient's first psychiatric admission.",
+
+  "q8_circumstances_current_admission": "Write a clear clinical narrative explaining why the patient was admitted. Cover: the background and precipitating factors; how symptoms developed over time; the specific symptoms, behaviours, and risks that led to the MHA assessment; and the legal basis for detention. Write for a non-clinical panel — be clear and specific. Do not omit risk events.",
+
+  "q9_mental_disorder_present": "Answer 'Yes.' Then add one brief sentence identifying the disorder (e.g. 'Yes. This patient has a substance-induced psychotic disorder.'). Do not elaborate — detail belongs in sections 10 and 21.",
+
+  "q10_diagnosis": "State the diagnosis only. One or two sentences. No explanatory paragraphs here.",
+
+  "q11_learning_disability": "Does the patient have a learning disability? Yes or no, with brief explanation.",
+
+  "q12_detention_required": "Answer directly: Is there a mental disorder of a nature or degree that warrants detention? Yes or No, followed by one sentence of justification only. Full nature and degree analysis belongs in section 21.",
+
+  "q13_treatment": "Describe all treatment given. Cover: medications prescribed (doses, compliance, any refused and why); non-pharmacological input (psychology, OT, substance misuse); the patient's overall engagement; and what is planned going forward. Write in prose.",
+
+  "q14_strengths": "Describe all strengths and positive factors: engagement with staff, compliance with treatment, emerging insight, social support, protective factors, positive prognostic indicators.",
+
+  "q15_current_progress": "Write four paragraphs using these headings as prose (do not use them as labels): PRESENTATION AT ADMISSION — mental state, risks, and symptoms on admission day. PROGRESS DURING ADMISSION — how the clinical picture has evolved, key turning points. CURRENT OBSERVATIONS — most recent ward behaviour, engagement, sleep, appetite. INSIGHT AND CAPACITY — current insight level and one brief sentence on capacity.",
+
+  "q16_medication_compliance": "Describe the patient's understanding of and compliance with medication. Address each medication and likely future willingness to take treatment. Note any refusals and whether they appear related to ongoing symptoms.",
+
+  "q17_mca_consideration": "Has the patient been assessed as having capacity to make treatment decisions? State the finding. Then explain briefly why the MHA rather than the MCA is the appropriate legal framework in this case.",
+
+  "q18_incidents_self_harm_others": "Document ALL incidents of harm, threats, or dangerous behaviour — both before and during admission. Include suicidal ideation, threats of self-harm, self-harm, threatening behaviour, weapons, and risk-driven behaviours. Do not leave this section incomplete.",
+
+  "q19_property_damage": "State only what is documented. If no evidence of property damage or threats to damage property, write: There is no evidence of property damage or threats to damage property documented in the available notes.",
+
+  "q20_section2_detention_justified": "Write four paragraphs explaining why detention remains necessary. HEALTH: why is detention necessary for the patient's health — what disorder, what treatment is needed, what happens without it? SAFETY: why is detention necessary for safety — name the specific risk events, explain the causal chain from mental disorder to risk behaviour. PROTECTION OF OTHERS: is there any risk to other people — if yes, describe it specifically; if no, state this. WHY COMMUNITY IS INSUFFICIENT: explain clearly why the patient cannot be safely managed outside hospital right now — address insight, treatment adherence, enforceability, and what would likely happen if detention ended today.",
+
+  "q21_treatment_in_hospital_justified": "This is a critical section. Write it in three parts as flowing prose (not separate headings). First, address the NATURE OF THE DISORDER: explain what kind of mental illness this is, what its characteristic features are, how it typically behaves, and what happens when it is untreated or when the patient disengages — describe the features of this disorder that make continued inpatient treatment necessary. Second, address the DEGREE OF THE DISORDER right now: describe the current active symptoms, current severity, current insight, and current functional impairment — how severe is the disorder at this moment, and how does it compare to baseline? Third, explain why — given both the nature and degree — inpatient treatment remains necessary: what does the hospital provide that the community cannot; what risks are contained by the inpatient setting; and why community treatment is currently insufficient. Write this so a non-clinical panel can follow the reasoning.",
+
+  "q22_risk_if_discharged": "Write a clear risk formulation answering: what would happen if this patient were discharged today? Cover: RISK TO SELF — specific ideation, threats, or behaviour documented, with causal reasoning about what would likely happen on discharge and over what timeframe (hours, days, weeks); RISK TO OTHERS — any documented risk to third parties; RISK OF SELF-NEGLECT — any history of poor self-care or vulnerability; RISK FROM SUBSTANCE USE — if relevant, the relationship between substance use, mental state, and risk; OVERALL SUMMARY — current risk level and the key factors that would precipitate deterioration.",
+
+  "q23_community_risk_management": "Write three paragraphs. First: what community options exist — CMHT, crisis team, substance misuse services, psychology, depot in the community. Second: explain specifically why these are currently insufficient — address insight, treatment engagement, enforceability, and the gap between what community services can offer and what this patient currently needs. Third: what would need to change before community management could be considered safe.",
+
+  "q24_recommendations": "This is the most important section. Write it in four paragraphs. First: CURRENT CLINICAL PICTURE — describe the current mental state honestly, including any improvement. Second: DECISION ON DETENTION — state clearly and directly: does this patient continue to meet criteria for detention under the Mental Health Act? Answer Yes or No. Then explain why, with explicit reference to the nature of the disorder, the degree of the disorder, the current risk picture, and the need for inpatient treatment. Use language such as: 'In my clinical opinion, this patient continues to meet the criteria for detention because...' Do not just assert the criteria are met — demonstrate it. Third: CONSEQUENCES OF DISCHARGE — if discharged today, what would likely happen? Be specific. Use language such as: 'Discharge at this stage would, in my clinical judgment, be likely to result in...' Include timeframe where possible. Fourth: PLAN — write as a numbered list: 1. Decision on legal status; 2. Medication plan; 3. Monitoring; 4. MDT input and next steps; 5. Discharge planning when appropriate.",
+
+  "confidence_note": "List sections where information was limited and clinician completion is most important."
+}}
+
+Critical rules:
+- Use BOTH the structured data AND the raw notes — raw notes contain essential narrative detail
+- Section 18 must include ALL documented risk events
+- Sections 21 and 24 must explicitly address nature and degree
+- Section 24 must include a clear Yes/No decision on detention
+- Never leave a field empty — provide content or state what is not documented
+- Do not invent details not present in the notes"""
+
+
+def generate_managers(extracted_records, raw_notes, risk_assessment, stage, api_key):
+    client = OpenAI(api_key=api_key)
+    raw_text = "\n\n---\n\n".join(f"NOTE {i+1}:\n{n}" for i,n in enumerate(raw_notes))
+    prompt = MANAGERS_PROMPT.format(
+        extracted_data=json.dumps(extracted_records, indent=2, ensure_ascii=False),
+        raw_notes=raw_text,
+        risk_assessment=json.dumps(risk_assessment, indent=2, ensure_ascii=False),
+        admission_stage=stage
+    )
+    response = client.chat.completions.create(
+        model="gpt-4o", temperature=0.0, max_tokens=4000,
+        messages=[{"role":"system","content":MANAGERS_SYSTEM},{"role":"user","content":prompt}]
+    )
+    output = response.choices[0].message.content.strip()
+    if output.startswith("```"):
+        output = "\n".join(l for l in output.splitlines() if not l.strip().startswith("```"))
+    return json.loads(output)
+
+
 def generate_s3(extracted_records, raw_notes, risk_assessment, api_key):
     client = OpenAI(api_key=api_key)
     raw_text = "\n\n---\n\n".join(f"NOTE {i+1}:\n{n}" for i,n in enumerate(raw_notes))
@@ -1136,6 +1261,9 @@ for key in ["s3_notes","s3_extracted","tr_notes","tr_extracted","ds_notes","ds_e
     if key not in st.session_state: st.session_state[key]=[]
 if "ck_result" not in st.session_state: st.session_state.ck_result = None
 if "ck_patient_name" not in st.session_state: st.session_state.ck_patient_name = ""
+if "mg_result" not in st.session_state: st.session_state.mg_result = None
+if "mg_patient_name" not in st.session_state: st.session_state.mg_patient_name = ""
+if "mg_risk" not in st.session_state: st.session_state.mg_risk = {}
 
 with st.sidebar:
     st.markdown("### \u2699 Settings")
@@ -1158,7 +1286,7 @@ if st.session_state.main_extracted:
 
     output_type = st.radio(
         "What would you like to generate?",
-        ["Tribunal report", "Discharge summary", "Interim summary", "Transfer of care", "Clerking summary"],
+        ["Tribunal report", "Discharge summary", "Interim summary", "Transfer of care", "Clerking summary", "Managers hearing report"],
         horizontal=True, key="main_output_type"
     )
 
@@ -1170,6 +1298,9 @@ if st.session_state.main_extracted:
         )
         main_tribunal_key = "Inpatient detention appeal" if "Inpatient" in main_tribunal_type else "CTO appeal"
         main_stage = stage_selector("main")
+
+    if output_type == "Managers hearing report":
+        main_stage_mg = stage_selector("main_mg")
 
     st.divider()
     st.markdown("### Step 3 — Generate")
@@ -1231,6 +1362,19 @@ if st.session_state.main_extracted:
                         st.session_state.ck_patient_name = result.get("patient_name") or patient_name
                     except Exception as e: st.error(f"Error: {e}")
 
+            elif output_type == "Managers hearing report":
+                mg_risk = {}
+                with st.spinner("Computing risk assessment..."):
+                    try: mg_risk = compute_risk(extracted, notes, main_stage_mg, api_key)
+                    except Exception as e: st.warning(f"Risk assessment failed: {e}")
+                with st.spinner("Generating managers hearing report — this may take 30–60 seconds..."):
+                    try:
+                        result = generate_managers(extracted, notes, mg_risk, main_stage_mg, api_key)
+                        st.session_state.mg_result = result
+                        st.session_state.mg_patient_name = result.get("patient_name") or patient_name
+                        st.session_state.mg_risk = mg_risk
+                    except Exception as e: st.error(f"Error: {e}")
+
     # ── Render persisted clerking output ──────────────────────────────────────
     if output_type == "Clerking summary" and st.session_state.ck_result:
         st.success("Draft generated. Review and edit all sections before downloading.")
@@ -1244,6 +1388,26 @@ if st.session_state.main_extracted:
         d_tab, src_tab = st.tabs(["Draft clerking", "Source data"])
         with d_tab:
             render_clerking(st.session_state.ck_result, st.session_state.ck_patient_name, show_debug)
+        with src_tab:
+            st.json(st.session_state.main_extracted)
+
+    # ── Render persisted managers report ─────────────────────────────────────
+    if output_type == "Managers hearing report" and st.session_state.mg_result:
+        st.success("Draft generated. Review and edit all sections before downloading.")
+        st.divider()
+        col_reset, _ = st.columns([1, 4])
+        with col_reset:
+            if st.button("🗑 Clear report", key="mg_clear"):
+                st.session_state.mg_result = None
+                st.session_state.mg_patient_name = ""
+                st.session_state.mg_risk = {}
+                st.rerun()
+        r_tab, d_tab, src_tab = st.tabs(["Risk assessment", "Draft report", "Source data"])
+        with r_tab:
+            render_risk(st.session_state.mg_risk, show_debug, len(st.session_state.main_extracted))
+        with d_tab:
+            # Render using tribunal layout (same field names), then add custom download
+            render_tribunal(st.session_state.mg_result, st.session_state.mg_patient_name, "Inpatient detention appeal", show_debug)
         with src_tab:
             st.json(st.session_state.main_extracted)
 
