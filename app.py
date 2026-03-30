@@ -781,6 +781,18 @@ CRITICAL WRITING RULES:
 - Do not use EVIDENCE: labels or bullet points anywhere except the recommendation.
 - Where the patient has improved, acknowledge it — then explain why discharge remains premature.
 
+CRITICAL STYLE REQUIREMENT — THIS IS NOT A DESCRIPTIVE REPORT:
+This report must read as a defensive clinical argument, not a neutral summary.
+The model must:
+- Clearly argue why detention is necessary, using assertive and reasoned clinical language
+- Explicitly describe what will happen if this patient is discharged — be predictive and specific, not cautious or hedged
+- Link symptoms → impaired insight → risk behaviour → likely outcome → need for continued detention
+- Avoid neutral, passive, or descriptive phrasing throughout
+- Avoid generic statements such as "criteria are met" — demonstrate why criteria are met with clinical evidence
+The target style is that of a senior clinician making an active, reasoned case. For example:
+"[Patient] continues to present with an active psychotic illness characterised by [symptoms]. The nature of the illness is [description]. The current degree remains clinically significant because [evidence]. If discharged at this stage, it is highly likely that within [timeframe] [patient] would [specific outcome]. Community management is not currently sufficient because [reasons]. For these reasons, continued detention remains necessary for [specific clinical purpose]."
+Write every relevant section as if you are making this argument, not simply reporting facts.
+
 MOST IMPORTANT REQUIREMENT — NATURE AND DEGREE:
 Every time you address whether detention is justified, you must explicitly explain:
 1. The NATURE of the disorder: what kind of illness this is, how it typically behaves, what happens when untreated, and the features (e.g. poor insight, relapsing course, risk behaviours) that make this disorder particularly relevant to detention.
