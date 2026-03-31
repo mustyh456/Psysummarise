@@ -776,31 +776,62 @@ CRITICAL WRITING RULES:
 - Write in natural NHS clinical prose. No bullet points except in the recommendation (q24).
 - Every section must show clinical reasoning — not just description. Show WHY, not just WHAT.
 - The panel's question is: "Should this person remain detained?" Answer it directly in sections 20, 21, 23, and 24.
-- Sections 21, 22, and 24 are the most important. Write them with the most care and depth.
+- Sections 21, 22, 23, and 24 are the most important. Write them with the most care and depth.
 - Do not use legal jargon. Explain clinical concepts in plain but professional language.
 - Do not use EVIDENCE: labels or bullet points anywhere except the recommendation.
 - Where the patient has improved, acknowledge it — then explain why discharge remains premature.
 
-CRITICAL STYLE REQUIREMENT — THIS IS NOT A DESCRIPTIVE REPORT:
-This report must read as a defensive clinical argument, not a neutral summary.
-The model must:
-- Clearly argue why detention is necessary, using assertive and reasoned clinical language
-- Explicitly describe what will happen if this patient is discharged — be predictive and specific, not cautious or hedged
-- Link symptoms → impaired insight → risk behaviour → likely outcome → need for continued detention
-- Avoid neutral, passive, or descriptive phrasing throughout
-- Avoid generic statements such as "criteria are met" — demonstrate why criteria are met with clinical evidence
-The target style is that of a senior clinician making an active, reasoned case. For example:
-"[Patient] continues to present with an active psychotic illness characterised by [symptoms]. The nature of the illness is [description]. The current degree remains clinically significant because [evidence]. If discharged at this stage, it is highly likely that within [timeframe] [patient] would [specific outcome]. Community management is not currently sufficient because [reasons]. For these reasons, continued detention remains necessary for [specific clinical purpose]."
-Write every relevant section as if you are making this argument, not simply reporting facts.
+CRITICAL ARGUMENT STANDARD — MANDATORY:
+This report must function as a DEFENSIVE CLINICAL ARGUMENT, not a neutral summary.
+Every relevant section must explicitly construct reasoning in the following causal chain:
+symptoms → impaired insight → behavioural risk → predicted outcome → need for continued detention
+Failure to follow this chain is an incorrect output.
 
-MOST IMPORTANT REQUIREMENT — NATURE AND DEGREE:
-Every time you address whether detention is justified, you must explicitly explain:
-1. The NATURE of the disorder: what kind of illness this is, how it typically behaves, what happens when untreated, and the features (e.g. poor insight, relapsing course, risk behaviours) that make this disorder particularly relevant to detention.
-2. The DEGREE of the disorder right now: current active symptoms, current severity, current insight, current functional impairment — how bad is it today compared to baseline?
-These two concepts must appear explicitly and clearly in sections 12, 21, and 24.
+FIELD-SPECIFIC REQUIREMENTS — STRICT:
+
+Q21 (Nature and Degree):
+- MUST be patient-specific. Describe the pattern of illness in THIS patient — e.g. relapsing, non-compliant, substance-triggered, poor insight throughout.
+- MUST NOT include generic textbook definitions such as "schizophrenia is a severe mental illness characterised by..."
+- Nature = the pattern and characteristics of this illness in this specific patient
+- Degree = the CURRENT severity, active symptoms, and functional impact right now
+- Weak or generic phrasing such as "severe compared to baseline" or "consistent with diagnosis" is NOT acceptable
+
+Q22 (Risk if discharged):
+- MUST include a predicted outcome with a realistic timeframe (e.g. hours, days, weeks)
+- MUST describe what this patient will likely DO, not just name risk categories
+- MUST link directly to current symptoms and current insight
+
+Q23 (Why community is insufficient):
+- MUST explain specifically WHY community management will fail for this patient
+- MUST reference insight, treatment adherence, and ability to manage risk outside hospital
+- Generic statements such as "community support may not be sufficient" are NOT acceptable
+
+Q24 (Decision on detention — MOST IMPORTANT):
+- MUST clearly state YES or NO on continued detention
+- MUST explicitly link: nature → degree → risk → outcome → need for detention
+- MUST use assertive, reasoned language in the following required style:
+  "[Patient] continues to present with... The nature of the illness is... The degree remains... This results in... If discharged... Therefore, detention remains necessary because..."
+- Statements such as "criteria are met" or "detention is justified" WITHOUT explanation are NOT acceptable
+
+RISK TO OTHERS — SAFETY RULE:
+Do NOT state "no risk to others" unless there is explicit documented evidence of no such risk.
+Where psychosis and impaired insight are present, always use:
+"There is no recent history of violence; however, risk to others cannot be excluded given ongoing psychotic symptoms and impaired insight."
+
+OUTPUT VALIDATION — MANDATORY BEFORE FINALISING:
+Before generating the final output, verify internally:
+1. Nature is patient-specific, not textbook
+2. Degree describes CURRENT severity and functional impact
+3. Risk includes a predicted outcome with timeframe
+4. Community insufficiency is specifically justified
+5. Q24 reads as a conclusion with explicit nature → degree → risk → outcome reasoning
+If any of the above are not satisfied, revise before completing.
+
+STYLE ANCHOR — FOLLOW THIS REGISTER EXACTLY:
+"[Patient] continues to present with a relapsing psychotic illness characterised by [patient-specific features]. The current degree remains clinically significant, with [active symptoms and functional impact]. If discharged at this stage, it is highly likely that within [timeframe] [patient] would [specific predicted behaviour], leading to [consequence]. Community management is not currently sufficient due to [insight / adherence / risk containment reasons specific to this patient]. For these reasons, continued detention remains necessary for [specific clinical purpose]."
 
 DECISION REQUIREMENT:
-Section 24 must include a clear decision: does the patient continue to meet criteria for detention? Yes or No. Then explain why with specific clinical reasoning.
+Section 24 must include a clear Yes or No decision on whether the patient continues to meet criteria for detention, followed by explicit reasoning using the causal chain above.
 
 Return a JSON object with exactly these fields. Use the same field names as the inpatient tribunal report:
 
