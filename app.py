@@ -783,55 +783,55 @@ CRITICAL WRITING RULES:
 
 CRITICAL ARGUMENT STANDARD — MANDATORY:
 This report must function as a DEFENSIVE CLINICAL ARGUMENT, not a neutral summary.
-Every relevant section must explicitly construct reasoning in the following causal chain:
-symptoms → impaired insight → behavioural risk → predicted outcome → need for continued detention
-Failure to follow this chain is an incorrect output.
+The model MUST construct reasoning using the following causal chain:
+symptoms → impaired insight → behavioural consequence → predicted outcome → need for detention
+If this chain is not clearly present in every relevant section, the output is incorrect.
 
-FIELD-SPECIFIC REQUIREMENTS — STRICT:
+Q21 — NATURE AND DEGREE (STRICT):
+Nature = the pattern of illness in THIS patient. Do not write textbook definitions.
+Degree = the CURRENT severity and functional impact right now.
 
-Q21 (Nature and Degree):
-- MUST be patient-specific. Describe the pattern of illness in THIS patient — e.g. relapsing, non-compliant, substance-triggered, poor insight throughout.
-- MUST NOT include generic textbook definitions such as "schizophrenia is a severe mental illness characterised by..."
-- Nature = the pattern and characteristics of this illness in this specific patient
-- Degree = the CURRENT severity, active symptoms, and functional impact right now
-- Weak or generic phrasing such as "severe compared to baseline" or "consistent with diagnosis" is NOT acceptable
+CORRECT example: "Zeyad continues to present with a relapsing psychotic illness characterised by persistent lack of insight, ongoing refusal of medication, and vulnerability to relapse in the context of substance use. The current degree remains clinically significant, with impaired judgement and inability to engage meaningfully with treatment."
 
-Q22 (Risk if discharged):
-- MUST include a predicted outcome with a realistic timeframe (e.g. hours, days, weeks)
-- MUST describe what this patient will likely DO, not just name risk categories
-- MUST link directly to current symptoms and current insight
+INCORRECT — do not write anything like this: "Schizophrenia is a severe mental illness characterised by hallucinations and delusions…"
 
-Q23 (Why community is insufficient):
-- MUST explain specifically WHY community management will fail for this patient
-- MUST reference insight, treatment adherence, and ability to manage risk outside hospital
-- Generic statements such as "community support may not be sufficient" are NOT acceptable
+Q22 — RISK IF DISCHARGED (STRICT):
+Describe what the patient will likely DO if discharged. Do not name risk categories.
+Must include: predicted behaviour + causal reasoning + timeframe (hours / days / weeks).
 
-Q24 (Decision on detention — MOST IMPORTANT):
-- MUST clearly state YES or NO on continued detention
-- MUST explicitly link: nature → degree → risk → outcome → need for detention
-- MUST use assertive, reasoned language in the following required style:
-  "[Patient] continues to present with... The nature of the illness is... The degree remains... This results in... If discharged... Therefore, detention remains necessary because..."
-- Statements such as "criteria are met" or "detention is justified" WITHOUT explanation are NOT acceptable
+CORRECT example: "If discharged at this stage, it is highly likely that he would discontinue medication, leading to deterioration of his mental state within weeks, with increasing self-neglect and risk associated with relapse."
+
+INCORRECT — do not write anything like this: "There is a moderate risk of relapse if discharged."
+
+Q23 — WHY COMMUNITY IS INSUFFICIENT (STRICT):
+Explain WHY community management will fail. Reference insight, adherence, and ability to manage risk outside hospital.
+
+CORRECT example: "Community management is not currently sufficient due to lack of insight, poor adherence, and inability to reliably mitigate risk outside a structured setting."
+
+INCORRECT — do not write anything like this: "Community support may not be sufficient."
+
+Q24 — DECISION ON DETENTION (MOST IMPORTANT — MANDATORY STRUCTURE):
+This must be written as a SINGLE CONTINUOUS ARGUMENT following this exact structure:
+1. current presentation → 2. nature of illness → 3. degree of illness → 4. predicted outcome if discharged → 5. why community is insufficient → 6. clear conclusion on detention.
+
+CORRECT example (follow this style exactly): "Zeyad continues to present with a relapsing psychotic illness characterised by persistent lack of insight and ongoing refusal of medication. The current degree remains clinically significant, with impaired judgement and limited ability to engage meaningfully with treatment. If discharged at this stage, it is highly likely that he would discontinue treatment, leading to deterioration of his mental state within weeks, with increasing self-neglect and risk associated with relapse. Community management is not currently sufficient due to lack of insight, poor adherence, and inability to reliably mitigate risk outside a structured setting. For these reasons, continued detention remains necessary for treatment and risk management."
+
+INCORRECT — do not write anything like this: "Yes, detention is justified due to nature and degree of illness."
 
 RISK TO OTHERS — SAFETY RULE:
-Do NOT state "no risk to others" unless there is explicit documented evidence of no such risk.
-Where psychosis and impaired insight are present, always use:
-"There is no recent history of violence; however, risk to others cannot be excluded given ongoing psychotic symptoms and impaired insight."
+Do NOT write "no risk to others" unless explicitly supported by the notes.
+Where psychosis and impaired insight are present, always write: "There is no recent history of violence; however, risk to others cannot be excluded given ongoing psychotic symptoms and impaired insight."
 
-OUTPUT VALIDATION — MANDATORY BEFORE FINALISING:
-Before generating the final output, verify internally:
-1. Nature is patient-specific, not textbook
+FINAL OUTPUT VALIDATION — MANDATORY:
+Before completing the report, verify internally:
+1. Nature is patient-specific — not generic, not textbook
 2. Degree describes CURRENT severity and functional impact
-3. Risk includes a predicted outcome with timeframe
-4. Community insufficiency is specifically justified
-5. Q24 reads as a conclusion with explicit nature → degree → risk → outcome reasoning
-If any of the above are not satisfied, revise before completing.
+3. Risk includes predicted behaviour and timeframe
+4. Community insufficiency is clearly explained with specific reasons
+5. Q24 reads as a full continuous argument, not a summary or a checklist
+If any of the above are not satisfied, revise before generating output.
 
-STYLE ANCHOR — FOLLOW THIS REGISTER EXACTLY:
-"[Patient] continues to present with a relapsing psychotic illness characterised by [patient-specific features]. The current degree remains clinically significant, with [active symptoms and functional impact]. If discharged at this stage, it is highly likely that within [timeframe] [patient] would [specific predicted behaviour], leading to [consequence]. Community management is not currently sufficient due to [insight / adherence / risk containment reasons specific to this patient]. For these reasons, continued detention remains necessary for [specific clinical purpose]."
-
-DECISION REQUIREMENT:
-Section 24 must include a clear Yes or No decision on whether the patient continues to meet criteria for detention, followed by explicit reasoning using the causal chain above.
+Return a JSON object with exactly these fields. Use the same field names as the inpatient tribunal report:
 
 Return a JSON object with exactly these fields. Use the same field names as the inpatient tribunal report:
 
